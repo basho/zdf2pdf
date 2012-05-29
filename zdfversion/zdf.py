@@ -6,34 +6,26 @@ zdfversion: Helper script for Zendesk forum entry (knowledge base)
             Example <forum_id>: 20767107
 """
 
-import os
-import pycurl
-import sys
-try:
-    import cStringIO
-except ImportError:
-    import StringIO
-try:
-    import xml.etree.cElementTree as ET
-except ImportError:
-    import xml.etree.ElementTree as ET
-
-
-
-class ZDF():
-    def __init__(creds, url):
+class ZDF:
+    def __init__(self, creds, url):
         self.creds = creds # e.g. "you@example.com/token:dneib393fwEF3ifbsEXAMPLEdhb93dw343"
         self.url = url + '/api/v1/forums/'
-        self.entries = "entries.xml"
+        #self.entries = "entries.xml"
         #self.forums = "forums.xml"
         #self.post_base = "https://help.basho.com/api/v1/"
 
-    def curl(forum_id):
+    def curl(self, forum_id):
         """Wrapper function around PyCurl with XML/Zd specific bits"""
+        import pycurl
+        try:
+            import cStringIO
+        except ImportError:
+            import StringIO
+
         sio = cStringIO.StringIO()
         curl = pycurl.Curl()
         curl.setopt(curl.HTTPHEADER, ['Accept: application/xml'])
-        curl.setopt(curl.URL, self.url + forum_id + '/' + self.entries)
+        curl.setopt(curl.URL, self.url + forum_id + '/entries.xml')
         curl.setopt(curl.WRITEFUNCTION, sio.write)
         curl.setopt(curl.CONNECTTIMEOUT, 5)
         curl.setopt(curl.TIMEOUT, 7)
@@ -48,7 +40,10 @@ class ZDF():
         sio.close()
         return result;
 
-    def strip():
+    def xml2pdf(self, tree, filename, title=''):
+        print('xml2pdf not yet implemented')
+
+    def strip(self):
         """Strips elements which need to be regenerated automatically by the API at POST time"""
         for elem in tree.iterfind('entry/created-at'):
             elem.clear()
@@ -66,7 +61,7 @@ if args.forum_id:
     tmpfile = "./entries_tmp.xml"
     with open(tmpfile, "w") as outfile:
         outfile.write(entries)
-    tree = ET.ElementTree(file=tmpfile)
+    tree = et.ElementTree(file=tmpfile)
     zdf_strip()
     if args.output_file:
         clnfile = args.output_file
@@ -91,57 +86,68 @@ if entries.filename:
         sys.exit(1)
 """
 
-class Usage(Exception):
-    def __init__(self, msg):
-        self.msg = msg
-
 def main(argv=None):
-    import argparse
+    import os, sys, argparse
+    import ConfigParser as configparser
+    try:
+        import xml.etree.cElementTree as et
+    except ImportError:
+        import xml.etree.ElementTree as et
 
-    args = argparse.ArgumentParser(
+    argp = argparse.ArgumentParser(
         description='Make a PDF from a Zendesk forum.')
-    args.add_argument('-c', action='store', dest='config_filename',
-        default='~/.zdfversion.cfg',
-        help='Zendesk configuration filename (default: ~/.zdfversion.cfg)')
-    args.add_argument('-f', action='store', dest='entries_filename',
+    argp.add_argument('-c', action='store', dest='config_file',
+        default=os.path.expanduser('~') + '/.zdfversion.cfg',
+        help='Zendesk configuration file (default: ~/.zdfversion.cfg)')
+
+    group = argp.add_mutually_exclusive_group()
+    group.add_argument('-f', action='store', dest='entries_file',
         help='Zendesk entries XML file to convert to PDF')
-    args.add_argument('-i', action='store', dest='forum_id',
+    group.add_argument('-i', action='store', dest='forum_id',
         help='Zendesk forum ID to download and convert to PDF')
-    args.add_argument('-o', action='store', dest='pdf_filename',
+
+    argp.add_argument('-o', action='store', dest='pdf_file',
         help='PDF output filename')
-    args.add_argument('-t', action='store', dest='pdf_title',
+    argp.add_argument('-t', action='store', dest='pdf_title',
         help='PDF title')
-    args.add_argument("-v","--verbose",
-        help="Verbose output")
-    args.add_argument("-h","--help",
-        help="Help and Usage")
+    argp.add_argument('-v', '--verbose', action='store_true',
+        help='Verbose output')
 
     if argv is None:
         argv = sys.argv
-    try:
-        try:
-            args = args.parse_args()
-            opts, args = getopt.getopt(argv[1:], "h", ["help"])
-        except getopt.error, msg:
-             raise Usage(msg)
-        # more code, unchanged
-    except Usage, err:
-        print >>sys.stderr, err.msg
-        print >>sys.stderr, "for help use --help"
-        return 2
+    args = argp.parse_args()
 
-    import ConfigParser as configparser
     config = configparser.RawConfigParser()
-    config.read(config_filename)
-    email = config.get('zdfversion', 'email')
-    token = config.get('zdfversion', 'token')
-    url   = config.get('zdfversion', 'url')
+    try:
+        config.read(args.config_file)
+        email = config.get('zdfversion', 'email')
+        token = config.get('zdfversion', 'token')
+        url   = config.get('zdfversion', 'url')
+    except configparser.NoSectionError:
+        print('Could not read settings from ' + args.config_file)
+        return 1
 
     creds = email + '/token:' + token
-    ZDF(creds = "you@example.com/token:dneib393fwEF3ifbsEXAMPLEdhb93dw343",
-          url = url
-       )
+    zdf = ZDF(creds=creds, url=url)
 
-if __name__ == "__main__":
-    main()
+    if args.entries_file:
+        tree = et.ElementTree(file=args.entries_file)
+    elif args.forum_id:
+        entries = zdf.curl(args.forum_id)
+        xml_filename = args.forum_id + '.xml'
+        with open(xml_filename, "w") as outfile:
+            outfile.write(entries)
+        tree = et.XML(entries)
+    else:
+        print('Error: Need either Zendesk entries XML file or remote forum ID.\n')
+        return 1
+
+    if not args.pdf_file:
+        args.pdf_file = 'bob.pdf'
+
+    if not args.pdf_title:
+        args.pdf_title = 'Bob'
+
+    zdf.xml2pdf(tree=tree, filename=args.pdf_file, title=args.pdf_title)
+    return 0
 
