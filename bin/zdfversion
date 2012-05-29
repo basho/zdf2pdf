@@ -1,0 +1,6 @@
+import sys
+from zdfversion
+
+if __name__ == '__main__':
+    sys.exit(main())
+
