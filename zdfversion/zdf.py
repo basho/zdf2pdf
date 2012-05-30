@@ -12,14 +12,15 @@ Example <forum_id> for reading from help.basho.com: 20767107
 class ZDF:
     def __init__(self, creds=None, url=None):
         # creds looks like you@example.com/token:dneib393fwEF3ifbsEXAMPLEdhb93dw343
+        self.fapi_path = '/api/v1/forums/'
         self.creds = creds
         if url:
-            self.url = url + '/api/v1/forums/'
+            self.url = url
         else:
             self.url = None
 
     def _zdf_request(self, url):
-        if not self.creds and not self.url:
+        if not self.creds:
             # raise some kind of exception if no creds and no url
             return
 
@@ -45,12 +46,25 @@ class ZDF:
         sio.close()
         return result;
 
-    def get_forums(self):
-        return self._zdf_request(self.url + forum_id + '/forums.xml')
+    def read_config(self, config_file):
+        # Read zendesk info from config file
+        import ConfigParser as configparser
+        config = configparser.RawConfigParser()
+        config.read(config_file)
+        email = config.get('zdfversion', 'email')
+        token = config.get('zdfversion', 'token')
+        url   = config.get('zdfversion', 'url')
 
-    def get_forum_entries(self, forum_id):
+        self.creds = email + '/token:' + token
+        self.url   = url
+
+
+    def get_forums(self):
+        return self._zdf_request(self.url + '/forums.xml')
+
+    def get_forum_entries(self, fid):
         """Wrapper function around PyCurl with XML/Zendesk specific bits"""
-        return self._zdf_request(self.url + forum_id + '/entries.xml')
+        return self._zdf_request(self.url + self.fapi_path + fid + '/entries.xml')
 
     def xml2pdf(self, tree, filename, title=''):
         print('xml2pdf not yet implemented')
@@ -67,9 +81,21 @@ class ZDF:
         for elem in tree.iterfind('entry/updated-at'):
             elem.clear()
 
+def _config_errmsg():
+    from textwrap import dedent
+    msg = dedent("""\
+        Error: Could not read settings from {config}
+
+        Expected config file to be of the format:
+        [zdfversion]
+        email = you@example.com
+        token = dneib393fwEF3ifbsEXAMPLEdhb93dw343
+        url = https://example.zendesk.com
+        """)
+    print(msg.format(config=args.config_file))
+
 def main(argv=None):
     import os, sys, argparse
-    import ConfigParser as configparser
     try:
         import xml.etree.cElementTree as et
     except ImportError:
@@ -86,6 +112,8 @@ def main(argv=None):
         help='Zendesk entries XML file to convert to PDF')
     g1.add_argument('-i', action='store', dest='forum_id',
         help='Zendesk forum ID to download and convert to PDF')
+    g1.add_argument('-l', action='store_true', dest='list_forums',
+        help='List Zendesk forums and IDs')
 
     # this should technically only be available if using -i, but argparse
     # doesn't support groups under mutually exclusive group ala
@@ -106,35 +134,18 @@ def main(argv=None):
     args = argp.parse_args()
 
     # Set up the ZDF object and obtain the xml tree
+    zdf = ZDF()
     if args.entries_file:
         # use an xml file on disk
-        zdf = ZDF()
         tree = et.ElementTree(file=args.entries_file)
     elif args.forum_id:
         # Get the xml from zendesk
-        # Read zendesk info from config file
-        config = configparser.RawConfigParser()
         try:
-            config.read(args.config_file)
-            email = config.get('zdfversion', 'email')
-            token = config.get('zdfversion', 'token')
-            url   = config.get('zdfversion', 'url')
+            zdf.read_config(args.config_file)
         except configparser.NoSectionError:
-            from textwrap import dedent
-            msg = dedent("""\
-                Error: Could not read settings from {config}
-
-                Expected config file to be of the format:
-                [zdfversion]
-                email = you@example.com
-                token = dneib393fwEF3ifbsEXAMPLEdhb93dw343
-                url = https://example.zendesk.com
-                """)
-            print(msg.format(config=args.config_file))
+            _config_errmsg()
             return 1
 
-        creds = email + '/token:' + token
-        zdf = ZDF(creds=creds, url=url)
         entries = zdf.get_forum_entries(args.forum_id)
         tree = et.XML(entries)
 
@@ -142,8 +153,28 @@ def main(argv=None):
         if args.keep_file:
             with open(args.keep_file, "w") as outfile:
                 outfile.write(entries)
+    elif args.list_forums:
+        # list available zendesk forums with their IDs
+        try:
+            zdf.read_config(args.config_file)
+        except configparser.NoSectionError:
+            _config_errmsg()
+            return 1
+
+        forums = zdf.get_forums()
+        tree = et.XML(forums)
+        for forum in tree.iter('forum'):
+            print(forum.find('id').text + ' ' + forum.find('name').text)
+        return 0
     else:
-        print('Error: Need either Zendesk entries XML file or remote forum ID.\n')
+        from textwrap import dedent
+        msg = dedent("""\
+            Error: One of the following is required:
+              -l option to list forums
+              -i FORUM_ID to retrieve
+              -f ENTRIES_FILE to convert 
+            """)
+        print(msg)
         return 1
 
     if not args.pdf_file:
