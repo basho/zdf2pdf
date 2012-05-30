@@ -152,10 +152,6 @@ def main(argv=None):
             print('       Use -t PDF_TITLE to specify a title.')
             return 1
 
-        # If no PDF filename given, name it after the entries file
-        if not args.pdf_file:
-            args.pdf_file = os.path.splitext(args.entries_file)[0] + '.pdf'
-
         # Get the entries off disk and make the etree
         tree = et.ElementTree(file=args.entries_file)
 
@@ -171,10 +167,6 @@ def main(argv=None):
         if not args.pdf_title:
             forum_tree = et.XML(zdf.get_forum(args.forum_id))
             args.pdf_title = forum_tree.find('name').text
-
-        # If no PDF filename given, name it after the title
-        if not args.pdf_file:
-            args.pdf_file = args.pdf_title + '.pdf'
 
         # Get the entries and make the etree
         entries = zdf.get_forum_entries(args.forum_id)
@@ -206,6 +198,10 @@ def main(argv=None):
             """)
         print(msg)
         return 1
+
+    # If no PDF filename given, name it after the title
+    if not args.pdf_file:
+        args.pdf_file = args.pdf_title + '.pdf'
 
     zdf.xml2pdf(tree=tree, filename=args.pdf_file, title=args.pdf_title)
     return 0
