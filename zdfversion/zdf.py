@@ -59,12 +59,15 @@ class ZDF:
         self.url   = url
 
 
-    def get_forums(self):
+    def get_all_forums(self):
         return self._zdf_request(self.url + '/forums.xml')
 
     def get_forum_entries(self, fid):
         """Wrapper function around PyCurl with XML/Zendesk specific bits"""
         return self._zdf_request(self.url + self.fapi_path + fid + '/entries.xml')
+
+    def get_forum(self, fid):
+        return self._zdf_request(self.url + '/forums/' + fid + '.xml')
 
     def xml2pdf(self, tree, filename, title=''):
         print('xml2pdf not yet implemented')
@@ -135,17 +138,40 @@ def main(argv=None):
 
     # Set up the ZDF object and obtain the xml tree
     zdf = ZDF()
+
+    # use an xml file on disk
     if args.entries_file:
-        # use an xml file on disk
+        # Refrain from guessing about the PDF title when using an entries file
+        if not args.pdf_title:
+            print('Error: Entries file specified but no title given.')
+            print('       Use -t PDF_TITLE to specify a title.')
+            return 1
+
+        # If no PDF filename given, name it after the entries file
+        if not args.pdf_file:
+            args.pdf_file = os.path.splitext(args.entries_file)[0] + '.pdf'
+
+        # Get the entries off disk and make the etree
         tree = et.ElementTree(file=args.entries_file)
+
+    # Get the xml from zendesk
     elif args.forum_id:
-        # Get the xml from zendesk
         try:
             zdf.read_config(args.config_file)
         except configparser.NoSectionError:
             _config_errmsg()
             return 1
 
+        # If no title given, use the forum title from Zendesk
+        if not args.pdf_title:
+            forum_tree = et.XML(zdf.get_forum(args.forum_id))
+            args.pdf_title = forum_tree.find('name').text
+
+        # If no PDF filename given, name it after the title
+        if not args.pdf_file:
+            args.pdf_file = args.pdf_title + '.pdf'
+
+        # Get the entries and make the etree
         entries = zdf.get_forum_entries(args.forum_id)
         tree = et.XML(entries)
 
@@ -154,15 +180,14 @@ def main(argv=None):
             with open(args.keep_file, "w") as outfile:
                 outfile.write(entries)
     elif args.list_forums:
-        # list available zendesk forums with their IDs
+        # list available zendesk forums with their IDs and exit
         try:
             zdf.read_config(args.config_file)
         except configparser.NoSectionError:
             _config_errmsg()
             return 1
 
-        forums = zdf.get_forums()
-        tree = et.XML(forums)
+        tree = et.XML(zdf.get_all_forums())
         for forum in tree.iter('forum'):
             print(forum.find('id').text + ' ' + forum.find('name').text)
         return 0
@@ -176,12 +201,6 @@ def main(argv=None):
             """)
         print(msg)
         return 1
-
-    if not args.pdf_file:
-        args.pdf_file = 'bob.pdf'
-
-    if not args.pdf_title:
-        args.pdf_title = 'Bob'
 
     zdf.xml2pdf(tree=tree, filename=args.pdf_file, title=args.pdf_title)
     return 0
