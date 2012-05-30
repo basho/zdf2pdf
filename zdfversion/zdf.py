@@ -1,9 +1,11 @@
 """
-zdfversion: Helper script for Zendesk forum entry (knowledge base)
-            documentation set version creation and maintenance.
-            See: <TODO> Internal wiki link with documentation on usage, etc.
+zdfversion: Helper script for Zendesk forum entry (DOCUMENTATION tab) version specific archive creation and maintenance.
 
-            Example <forum_id>: 20767107
+See the following URL for documentation on usage & process:
+
+http://bit.ly/Ks368Y
+
+Example <forum_id> for reading from help.basho.com: 20767107
 """
 
 class ZDF:
@@ -16,7 +18,7 @@ class ZDF:
             self.url = None
 
     def curl(self, forum_id):
-        """Wrapper function around PyCurl with XML/Zd specific bits"""
+        """Wrapper function around PyCurl with XML/Zendesk specific bits"""
         if not self.creds and not self.url:
             # raise some kind of exception if no creds and no url
             return
@@ -47,7 +49,7 @@ class ZDF:
         print('xml2pdf not yet implemented')
 
     def strip(self):
-        """Strips elements which need to be regenerated automatically by the API at POST time"""
+        """Strips elements which need to be regenerated automatically by the Zendesk API at POST time"""
         for elem in tree.iterfind('entry/created-at'):
             elem.clear()
         for elem in tree.iterfind('entry/id'):
@@ -66,7 +68,7 @@ def main(argv=None):
         import xml.etree.ElementTree as et
 
     argp = argparse.ArgumentParser(
-        description='Make a PDF from a Zendesk forum.')
+        description='Make a PDF documentation archive from a series of Zendesk forum entries.')
     argp.add_argument('-c', action='store', dest='config_file',
         default=os.path.expanduser('~') + '/.zdfversion.cfg',
         help='Zendesk configuration file (default: ~/.zdfversion.cfg)')
