@@ -105,7 +105,7 @@ def main(argv=None):
         import xml.etree.ElementTree as et
 
     argp = argparse.ArgumentParser(
-        description='Make a PDF documentation archive from a series of Zendesk forum entries.')
+        description='Make a PDF from Zendesk forums.')
     argp.add_argument('-c', action='store', dest='config_file',
         default=os.path.expanduser('~') + '/.zdfversion.cfg',
         help='Zendesk configuration file (default: ~/.zdfversion.cfg)')
@@ -197,7 +197,7 @@ def main(argv=None):
             Error: One of the following is required:
               -l option to list forums
               -i FORUM_ID to retrieve
-              -f ENTRIES_FILE to convert 
+              -f ENTRIES_FILE to convert
             """)
         print(msg)
         return 1

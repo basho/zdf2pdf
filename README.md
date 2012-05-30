@@ -53,9 +53,6 @@ you plan to archive documentation.
 More detailed information for installation and configuring virtualenv for
 specific environments is available from the
 [virtualenv project page](http://pypi.python.org/pypi/virtualenv).
-
-<FIXME> All of this needs a bit of updating
-
 The most effective way to setup for using the script, is to install
 virtualenv, and then follow these steps:
 
@@ -71,7 +68,7 @@ Install PyCurl:
 
     pip install pycurl
 
-Obtain `zdfversion.py` from this URL:
+Obtain `zdfversion.py` from this URL: <FIXME>
 
 Place `zdversion.py` into the virtualenv you created, and execute it per the
 instructions in the Utility Script section.
