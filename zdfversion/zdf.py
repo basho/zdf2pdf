@@ -7,13 +7,20 @@ zdfversion: Helper script for Zendesk forum entry (knowledge base)
 """
 
 class ZDF:
-    def __init__(self, creds, url):
+    def __init__(self, creds=None, url=None):
         # creds looks like you@example.com/token:dneib393fwEF3ifbsEXAMPLEdhb93dw343
         self.creds = creds
-        self.url = url + '/api/v1/forums/'
+        if url:
+            self.url = url + '/api/v1/forums/'
+        else:
+            self.url = None
 
     def curl(self, forum_id):
         """Wrapper function around PyCurl with XML/Zd specific bits"""
+        if not self.creds and not self.url:
+            # raise some kind of exception if no creds and no url
+            return
+
         import pycurl
         try:
             import cStringIO
@@ -64,11 +71,18 @@ def main(argv=None):
         default=os.path.expanduser('~') + '/.zdfversion.cfg',
         help='Zendesk configuration file (default: ~/.zdfversion.cfg)')
 
-    group = argp.add_mutually_exclusive_group()
-    group.add_argument('-f', action='store', dest='entries_file',
+    g1 = argp.add_mutually_exclusive_group()
+    g1.add_argument('-f', action='store', dest='entries_file',
         help='Zendesk entries XML file to convert to PDF')
-    group.add_argument('-i', action='store', dest='forum_id',
+    g1.add_argument('-i', action='store', dest='forum_id',
         help='Zendesk forum ID to download and convert to PDF')
+
+    # this should technically only be available if using -i, but argparse
+    # doesn't support groups under mutually exclusive group ala
+    # [ -i FORUM_ID [-k KEEP_FILE] ] | [ -f ENTRIES_FILE ] ]
+    # See: http://bugs.python.org/issue11588
+    argp.add_argument('-k', action='store', dest='keep_file',
+        help='Keep the fetched entries xml file at the given file path')
 
     argp.add_argument('-o', action='store', dest='pdf_file',
         help='PDF output filename')
@@ -81,27 +95,43 @@ def main(argv=None):
         argv = sys.argv
     args = argp.parse_args()
 
-    config = configparser.RawConfigParser()
-    try:
-        config.read(args.config_file)
-        email = config.get('zdfversion', 'email')
-        token = config.get('zdfversion', 'token')
-        url   = config.get('zdfversion', 'url')
-    except configparser.NoSectionError:
-        print('Could not read settings from ' + args.config_file)
-        return 1
-
-    creds = email + '/token:' + token
-    zdf = ZDF(creds=creds, url=url)
-
+    # Set up the ZDF object and obtain the xml tree
     if args.entries_file:
+        # use an xml file on disk
+        zdf = ZDF()
         tree = et.ElementTree(file=args.entries_file)
     elif args.forum_id:
+        # Get the xml from zendesk
+        # Read zendesk info from config file
+        config = configparser.RawConfigParser()
+        try:
+            config.read(args.config_file)
+            email = config.get('zdfversion', 'email')
+            token = config.get('zdfversion', 'token')
+            url   = config.get('zdfversion', 'url')
+        except configparser.NoSectionError:
+            from textwrap import dedent
+            msg = dedent("""\
+                Error: Could not read settings from {config}
+
+                Expected config file to be of the format:
+                [zdfversion]
+                email = you@example.com
+                token = dneib393fwEF3ifbsEXAMPLEdhb93dw343
+                url = https://example.zendesk.com
+                """)
+            print(msg.format(config=args.config_file))
+            return 1
+
+        creds = email + '/token:' + token
+        zdf = ZDF(creds=creds, url=url)
         entries = zdf.curl(args.forum_id)
-        xml_filename = args.forum_id + '.xml'
-        with open(xml_filename, "w") as outfile:
-            outfile.write(entries)
         tree = et.XML(entries)
+
+        # If requested, save the downloaded XML file
+        if args.keep_file:
+            with open(args.keep_file, "w") as outfile:
+                outfile.write(entries)
     else:
         print('Error: Need either Zendesk entries XML file or remote forum ID.\n')
         return 1
