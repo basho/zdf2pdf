@@ -26,11 +26,11 @@ class ZDF:
 
         import pycurl
         try:
-            import cStringIO
+            import cStringIO as SIO
         except ImportError:
-            import StringIO
+            import StringIO as SIO
 
-        sio = cStringIO.StringIO()
+        sio = SIO.StringIO()
         curl = pycurl.Curl()
         curl.setopt(curl.HTTPHEADER, ['Accept: application/xml'])
         curl.setopt(curl.URL, url)
@@ -70,7 +70,24 @@ class ZDF:
         return self._zdf_request(self.url + '/forums/' + fid + '.xml')
 
     def xml2pdf(self, tree, filename, title=''):
-        print('xml2pdf not yet implemented')
+        import xhtml2pdf.pisa as pisa
+        try:
+            import cStringIO as SIO
+        except ImportError:
+            import StringIO as SIO
+
+        data = '<h1>' + title + '</h1>'
+        for entry in tree.iter('entry'):
+            data += entry.find('body').text
+            data += '<br/><br/'
+
+        pdf = pisa.CreatePDF(
+            SIO.StringIO(data),
+            file(filename, "wb")
+        )
+
+        #if pdf.err:
+        #    dumpErrors(pdf)
 
     def strip(self):
         """Strips elements which need to be regenerated automatically by the
