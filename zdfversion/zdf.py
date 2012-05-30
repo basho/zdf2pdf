@@ -79,7 +79,7 @@ class ZDF:
         data = '<h1>' + title + '</h1>'
         for entry in tree.iter('entry'):
             data += entry.find('body').text
-            data += '<br/><br/'
+            data += '<br/><br/>'
 
         pdf = pisa.CreatePDF(
             SIO.StringIO(data),
@@ -88,18 +88,6 @@ class ZDF:
 
         #if pdf.err:
         #    dumpErrors(pdf)
-
-    def strip(self):
-        """Strips elements which need to be regenerated automatically by the
-        Zendesk API at POST time"""
-        for elem in tree.iterfind('entry/created-at'):
-            elem.clear()
-        for elem in tree.iterfind('entry/id'):
-            elem.clear()
-        for elem in tree.iterfind('entry/submitter-id'):
-            elem.clear()
-        for elem in tree.iterfind('entry/updated-at'):
-            elem.clear()
 
 def _config_errmsg():
     from textwrap import dedent
