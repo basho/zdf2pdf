@@ -18,8 +18,7 @@ class ZDF:
         else:
             self.url = None
 
-    def curl(self, forum_id):
-        """Wrapper function around PyCurl with XML/Zendesk specific bits"""
+    def _zdf_request(self, url):
         if not self.creds and not self.url:
             # raise some kind of exception if no creds and no url
             return
@@ -33,7 +32,7 @@ class ZDF:
         sio = cStringIO.StringIO()
         curl = pycurl.Curl()
         curl.setopt(curl.HTTPHEADER, ['Accept: application/xml'])
-        curl.setopt(curl.URL, self.url + forum_id + '/entries.xml')
+        curl.setopt(curl.URL, url)
         curl.setopt(curl.WRITEFUNCTION, sio.write)
         curl.setopt(curl.CONNECTTIMEOUT, 5)
         curl.setopt(curl.TIMEOUT, 7)
@@ -45,6 +44,13 @@ class ZDF:
         result = sio.getvalue()
         sio.close()
         return result;
+
+    def get_forums(self):
+        return self._zdf_request(self.url + forum_id + '/forums.xml')
+
+    def get_forum_entries(self, forum_id):
+        """Wrapper function around PyCurl with XML/Zendesk specific bits"""
+        return self._zdf_request(self.url + forum_id + '/entries.xml')
 
     def xml2pdf(self, tree, filename, title=''):
         print('xml2pdf not yet implemented')
@@ -129,7 +135,7 @@ def main(argv=None):
 
         creds = email + '/token:' + token
         zdf = ZDF(creds=creds, url=url)
-        entries = zdf.curl(args.forum_id)
+        entries = zdf.get_forum_entries(args.forum_id)
         tree = et.XML(entries)
 
         # If requested, save the downloaded XML file
