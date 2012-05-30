@@ -1,5 +1,6 @@
 """
-zdfversion: Helper script for Zendesk forum entry (DOCUMENTATION tab) version specific archive creation and maintenance.
+zdfversion: Helper script for Zendesk forum entry (DOCUMENTATION tab) version
+specific archive creation and maintenance.
 
 See the following URL for documentation on usage & process:
 
@@ -49,7 +50,8 @@ class ZDF:
         print('xml2pdf not yet implemented')
 
     def strip(self):
-        """Strips elements which need to be regenerated automatically by the Zendesk API at POST time"""
+        """Strips elements which need to be regenerated automatically by the
+        Zendesk API at POST time"""
         for elem in tree.iterfind('entry/created-at'):
             elem.clear()
         for elem in tree.iterfind('entry/id'):

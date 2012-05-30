@@ -1,11 +1,12 @@
-# Versioning Zendesk Documentation
+# Archiving Zendesk Based Product Documentation
 
-This document describes a process for creating documentation snapshots for the purpose of keeping historical version-specific documentation in the form of Zendesk forum entries at https://help.basho.com/.
+This guide describes the process and tools for creating archived, version specific,  Zendesk based product documentation snapshots in the form of PDF documents which are stored in the **Archived Documentation** section of our documentation at http://help.basho.com/.
 
 ## Process
 
-The process for creating a documentation snapshot is fairly straightforward and involves some preparation both in Zendesk, for the user account that will be using the API to make documentation snapshots, and to establish the environment for the versioning snapshot script, `zfversion.py`.
+The process for creating a documentation archive is fairly straightforward, but involves some one-time preparation of the Zendesk account for users making documentation archives, and some time to establish a working environment for the documentation archiving script, `zdfversion.py`.
 
+Here are the steps for archiving
 ## Environment and Setup
 
 The most effective way to setup for using the script, is to use [virtualenv]((http://pypi.python.org/pypi/virtualenv)), and the following steps:
