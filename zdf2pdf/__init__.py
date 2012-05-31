@@ -2,5 +2,5 @@
 #
 # Written by Brian Shumate <bshumate@basho.com>
 #        and Brent Woodruff <bwoodruff@basho.com>
-from zdf import main
-from zdf import ZDF
+from zdf2pdf import main
+from zdf2pdf import zdf2pdf

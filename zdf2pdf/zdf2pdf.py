@@ -1,5 +1,5 @@
 """
-zdfversion: Create version specific documentation archives from Zendesk
+zdf2pdf: Create version specific documentation archives from Zendesk
 product documentation at https://help.basho.com
 
 See the following URL for documentation on usage & process:
@@ -13,7 +13,7 @@ try:
 except ImportError:
     import xml.etree.ElementTree as et
 
-class ZDF:
+class zdf2pdf:
     def __init__(self, creds=None, url=None):
         # creds ex: you@example.com/token:dneib393fwEF3ifbsEXAMPLEdhb93dw343
         self.fapi_path = '/api/v1/forums/'
@@ -55,9 +55,9 @@ class ZDF:
         import ConfigParser as configparser
         config = configparser.RawConfigParser()
         config.read(config_file)
-        email = config.get('zdfversion', 'email')
-        token = config.get('zdfversion', 'token')
-        url   = config.get('zdfversion', 'url')
+        email = config.get('zdf2pdf', 'email')
+        token = config.get('zdf2pdf', 'token')
+        url   = config.get('zdf2pdf', 'url')
 
         self.creds = email + '/token:' + token
         self.url   = url
@@ -108,7 +108,7 @@ def _config_errmsg():
         Error: Could not read settings from {config}
 
         Expected config file to be of the format:
-        [zdfversion]
+        [zdf2pdf]
         email = you@example.com
         token = dneib393fwEF3ifbsEXAMPLEdhb93dw343
         url = https://example.zendesk.com
@@ -121,8 +121,8 @@ def main(argv=None):
     argp = argparse.ArgumentParser(
         description='Make a PDF from Zendesk forums.')
     argp.add_argument('-c', action='store', dest='config_file',
-        default=os.path.expanduser('~') + '/.zdfversion.cfg',
-        help='Zendesk configuration file (default: ~/.zdfversion.cfg)')
+        default=os.path.expanduser('~') + '/.zdf2pdf.cfg',
+        help='Zendesk configuration file (default: ~/.zdf2pdf.cfg)')
 
     g1 = argp.add_mutually_exclusive_group()
     g1.add_argument('-f', action='store', dest='entries_file',
@@ -150,8 +150,8 @@ def main(argv=None):
         argv = sys.argv
     args = argp.parse_args()
 
-    # Set up the ZDF object and obtain the xml tree
-    zdf = ZDF()
+    # Set up the zdf2pdf object and obtain the xml tree
+    zdf = zdf2pdf()
 
     # use an xml file on disk
     if args.entries_file:

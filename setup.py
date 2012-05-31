@@ -3,7 +3,7 @@ import sys, os
 
 version = "0.1"
 
-setup(name="zdfversion",
+setup(name="zdf2pdf",
       version=version,
       description="Make PDFs out of Zendesk forums.",
       long_description="Make PDFs out of Zendesk forums.",
@@ -20,7 +20,7 @@ setup(name="zdfversion",
       packages=find_packages(exclude=["ez_setup", "examples", "tests"]),
       include_package_data=True,
       zip_safe=False,
-      requires=["pycurl",
-        "xhtml2pdf",
+      requires=["xhtml2pdf",
+        "zendesk",
       ]
 )
