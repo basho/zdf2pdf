@@ -71,9 +71,9 @@ http://sourceforge.net/projects/freetype/files/freetype2/2.4.9/
     make
     make install
 
-Install httplib2, pycurl, simplejson, and xhtml2pdf:
+Install beautifulsoup4, httplib2, pycurl, simplejson, and xhtml2pdf:
 
-    pip install httplib2 pycurl simplejson xhtml2pdf
+    pip install beautifulsoup4 httplib2 pycurl simplejson xhtml2pdf
 
 Obtain zdfversion from this URL: <FIXME> add URL
 
