@@ -61,8 +61,10 @@ Activate the virtualenv:
 
 Build Freetype2:
 
+Download Freetype (version 2.4.9 used for this guide) from this URL:
+http://sourceforge.net/projects/freetype/files/freetype2/2.4.9/
+
     mkdir src && cd src
-    curl -O
 
 Install PyCurl:
 
@@ -79,9 +81,9 @@ specific environments is available from the
 
 ## zdfversion Utility
 
-### zdfversion Configuration
+zdfversion is the Python script for creating documentation snapshots. Once you have configured it for use with your Zendesk account, you can use it to archive documentation.
 
-zdfversion is the Python script for creating documentation snapshots.
+### Configuration
 
 Before using zdfversion, you must configure some basics, such as the target Zendesk URL, your account name, and your API token. These values are stored in the file `~/.zdfversion.cfg`, and the expected format of the file
 is shown in this example:
@@ -94,13 +96,15 @@ is shown in this example:
 Once you have created a `~/.zdfversion.cfg` file with values specific to
 your installation, you can proceed to using zdfversion.
 
+### Usage
+
 The script can be invoked with the following synopsis:
 
     zdfversion [-h] [-c CONFIG_FILE] [-f ENTRIES_FILE | -i FORUM_ID | -l]
                       [-k KEEP_FILE] [-o PDF_FILE] [-t PDF_TITLE] [-v]
 
 
-### Listing forums
+#### Listing forums
 
     zdfversion -l
 
@@ -116,12 +120,12 @@ The output consists of a listing of forum identifiers and their names:
     20840027 Bar
     20846071 Baz
 
-### Generate PDF from Forums URL
+#### Generate PDF from Forums URL
 
-To generate a PDF archive document from a forum URL, execute zdfversion
-with the `-i` option:
+To generate a PDF archive document directly from a particular forum URL and save the PDF with a certain title and filename, execute zdfversion
+with the `-i`, `-t`, and `-o` options:
 
-    zdfversion -i 20828562
+    zdfversion -i 20828562 -t "Great Justice" -o great_justice-v1.pdf
 
 where the `-i` option specifies a Zendesk forum identifier, which is the 8-digit string that makes up part of a Zendesk forum URL. For example, in the
 following URL:
@@ -130,9 +134,21 @@ following URL:
 
 the forum identifier is **20748808**.
 
-The `-f` option specifies a file of forum entries from which to use for generation of PDF instead of a forum id directly.
+The `-t` option specifies a title for the PDF document, which appears in the document text.
 
-### Generate PDF from Forums File
+Finally, the `-o` option tells zdfversion to save the PDF with the filename `great_justice-v1.pdf`.
+
+#### Generate PDF from Forums XML File
+
+To generate a PDF archive document from an existing XML file containing
+Zendesk forum entries, and give a custom title to the document,
+execute zdfversion with the `-f` and `-t` options:
+
+    zdfversion -f my_file.xml -t "Documentation Archive"
+
+The above command will open the file `my_file.xml`, and generate a PDF titled
+"Documentation Archive", with the filename `Documentation Archive.pdf`.
+
 
 ## Notes
 
