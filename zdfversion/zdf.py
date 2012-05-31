@@ -1,10 +1,10 @@
 """
-zdfversion: Helper script for Zendesk forum entry (DOCUMENTATION tab) version
-specific archive creation and maintenance.
+zdfversion: Create version specific documentation archives from Zendesk
+product documentation at https://help.basho.com
 
 See the following URL for documentation on usage & process:
 
-http://bit.ly/Ks368Y
+https://help.basho.com/entries/21469982-archiving-zendesk-based-documentation
 
 Example <forum_id> for reading from help.basho.com: 20767107
 """
