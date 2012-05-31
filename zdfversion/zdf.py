@@ -11,7 +11,7 @@ Example <forum_id> for reading from help.basho.com: 20767107
 
 class ZDF:
     def __init__(self, creds=None, url=None):
-        # creds looks like you@example.com/token:dneib393fwEF3ifbsEXAMPLEdhb93dw343
+        # creds ex: you@example.com/token:dneib393fwEF3ifbsEXAMPLEdhb93dw343
         self.fapi_path = '/api/v1/forums/'
         self.creds = creds
         if url:

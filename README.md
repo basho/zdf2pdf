@@ -9,13 +9,13 @@ documentation at http://help.basho.com/.
 
 The process for creating a documentation archive is fairly straightforward,
 but involves some one-time preparation of the Zendesk account for users
-making documentation archives. Additional time is required to establish a working environment for the documentation archiving utility, **zdfversion**.
+making documentation archives. Additional time is required to establish a working environment for the documentation archiving utility, zdfversion.
 
 Here are the essential steps for a basic documentation archiving run:
 
 1. One time set up of Zendesk user API token.
 2. One time set up of Python virtualenv to do documentation archival work in.
-3. Get **zdfversion**: <TODO> add URL https://github.com/basho/zdfversion
+3. Get zdfversion: <TODO> add URL https://github.com/basho/zdfversion
 4. Run `zdfversion` for the documentation set(s) you wish to archive.
 5. Create a new entry in the Archived Documentation section of
 Zendesk Documentation at http://help.basho.com.
@@ -25,7 +25,7 @@ The details for each step above will be presented in the following sections.
 
 ## Zendesk API Token Setup
 
-To use **zdfversion** as shown in the **zdfversion Utility** section, you
+To use zdfversion as shown in the **zdfversion Utility** section, you
 must first generate a Zendesk API token for your account. This token helps
 you to avoid disclosing your Zendesk user account password, and can be
 regenerated or disabled altogether at any time.
@@ -49,7 +49,7 @@ you plan to archive documentation.
 
 ## Virtual Environment Setup
 
-The most effective way to setup for using the **zdfversion** utility, is to
+The most effective way to setup for using the zdfversion utility, is to
 install virtualenv, and then follow these steps:
 
 Create a new virtualenv:
@@ -64,7 +64,7 @@ Install PyCurl:
 
     pip install pycurl
 
-Obtain **zdfversion** from this URL: <FIXME> add URL https://github.com/basho/zdfversion
+Obtain zdfversion from this URL: <FIXME> add URL https://github.com/basho/zdfversion
 
 Place **zdversion** into the virtualenv you created, and execute it per the
 instructions in the **zdfversion Utility** section.
@@ -75,7 +75,7 @@ specific environments is available from the
 
 ## zdfversion Utility
 
-**zdfversion** is the Python module for creating documentation snapshots.
+zdfversion is the Python module for creating documentation snapshots.
 The module is simple to use, with the following synopsis:
 
     zdfversion -l -i <forum_id> -f <entries_file>
@@ -96,7 +96,20 @@ The output consists of a listing of forum identifiers and their names:
     20840027 Bar
     20846071 Baz
 
-**Generate a PDF from forums**:
+### zdfversion Configuration
+
+Before using zdfversion, you must configure some basics, such as the target Zendesk URL, your account name, and your API token. These values are stored in the file `~/.zdfversion.cfg`, and the expected format of the file
+is shown in this example:
+
+    [zdfversion]
+    email = you@example.com
+    token = dneib393fwEF3ifbsEXAMPLEdhb93dw343
+    url = https://example.zendesk.com
+
+Once you have created a `~/.zdfversion.cfg` file with values specific to
+your installation, you can proceed to using zdfversion.
+
+### Generate a PDF from forums
 
     zdfversion -i 20828562
 
@@ -115,6 +128,6 @@ The `-f` option specifies a file of forum entries from which to use for generati
 
 There are potential issues and caveats with this process:
 
-* **zdfversion** does not currently handle additional forum metadata such
+* zdfversion does not currently handle additional forum metadata such
 as file attachments, but it is a planned capability that is in progress.
 
