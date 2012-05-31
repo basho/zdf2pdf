@@ -8,6 +8,10 @@ http://bit.ly/Ks368Y
 
 Example <forum_id> for reading from help.basho.com: 20767107
 """
+try:
+    import xml.etree.cElementTree as et
+except ImportError:
+    import xml.etree.ElementTree as et
 
 class ZDF:
     def __init__(self, creds=None, url=None):
@@ -21,7 +25,7 @@ class ZDF:
 
     def _zdf_request(self, url):
         if not self.creds:
-            # raise some kind of exception if no creds and no url
+            # raise some kind of exception if no creds
             return
 
         import pycurl
@@ -71,14 +75,23 @@ class ZDF:
 
     def xml2pdf(self, tree, filename, title=''):
         import xhtml2pdf.pisa as pisa
+        import HTMLParser
         try:
             import cStringIO as SIO
         except ImportError:
             import StringIO as SIO
 
+        htmlparser = HTMLParser.HTMLParser()
+
         data = '<h1>' + title + '</h1>'
         for entry in tree.iter('entry'):
-            data += entry.find('body').text
+            #t = htmlparser.unescape(entry.find('body').text)
+            #print(t)
+            t = entry.find('body').text
+            entry_tree = et.XML(t)
+            for img in entry_tree.iter('img'):
+                print(img.attrib['src'])
+            data += t
             data += '<br/><br/>'
 
         pdf = pisa.CreatePDF(
@@ -104,10 +117,6 @@ def _config_errmsg():
 
 def main(argv=None):
     import os, sys, argparse
-    try:
-        import xml.etree.cElementTree as et
-    except ImportError:
-        import xml.etree.ElementTree as et
 
     argp = argparse.ArgumentParser(
         description='Make a PDF from Zendesk forums.')
