@@ -9,86 +9,38 @@ https://help.basho.com/entries/21469982-archiving-zendesk-based-documentation
 Example <forum_id> for reading from help.basho.com: 20767107
 """
 try:
+    import simplejson as json
+except:
+    import json
+
+try:
     import xml.etree.cElementTree as et
 except ImportError:
     import xml.etree.ElementTree as et
 
-class zdf2pdf:
-    def __init__(self, creds=None, url=None):
-        # creds ex: you@example.com/token:dneib393fwEF3ifbsEXAMPLEdhb93dw343
-        self.fapi_path = '/api/v1/forums/'
-        self.creds = creds
-        if url:
-            self.url = url
-        else:
-            self.url = None
+def zdf2pdf(entries, filename, title=''):
+    from bs4 import BeautifulSoup
+    import xhtml2pdf.pisa as pisa
+    try:
+        import cStringIO as SIO
+    except ImportError:
+        import StringIO as SIO
 
-    def _zdf_request(self, url):
-        if not self.creds:
-            # raise some kind of exception if no creds
-            return
+    data = '<h1>' + title + '</h1>'
+    for entry in entries:
+        soup = BeautifulSoup(entry['body'])
+        for img in soup.find_all('img'):
+            print(img.attrs['src'])
+        data += entry['body']
+        data += '<br/><br/>'
 
-        import pycurl
-        try:
-            import cStringIO as SIO
-        except ImportError:
-            import StringIO as SIO
+    pdf = pisa.CreatePDF(
+        SIO.StringIO(data),
+        file(filename, "wb")
+    )
 
-        sio = SIO.StringIO()
-        curl = pycurl.Curl()
-        curl.setopt(curl.HTTPHEADER, ['Accept: application/xml'])
-        curl.setopt(curl.URL, url)
-        curl.setopt(curl.WRITEFUNCTION, sio.write)
-        curl.setopt(curl.CONNECTTIMEOUT, 5)
-        curl.setopt(curl.TIMEOUT, 7)
-        curl.setopt(curl.FOLLOWLOCATION, True)
-        curl.setopt(curl.MAXREDIRS, 5)
-        curl.setopt(curl.USERPWD, self.creds)
-        curl.setopt(curl.CUSTOMREQUEST, "GET")
-        curl.perform()
-        result = sio.getvalue()
-        sio.close()
-        return result;
-
-
-    def get_all_forums(self):
-        return self._zdf_request(self.url + '/forums.xml')
-
-    def get_forum_entries(self, fid):
-        """Wrapper function around PyCurl with XML/Zendesk specific bits"""
-        return self._zdf_request(self.url + self.fapi_path + fid + '/entries.xml')
-
-    def get_forum(self, fid):
-        return self._zdf_request(self.url + '/forums/' + fid + '.xml')
-
-    def xml2pdf(self, tree, filename, title=''):
-        import xhtml2pdf.pisa as pisa
-        import HTMLParser
-        try:
-            import cStringIO as SIO
-        except ImportError:
-            import StringIO as SIO
-
-        htmlparser = HTMLParser.HTMLParser()
-
-        data = '<h1>' + title + '</h1>'
-        for entry in tree.iter('entry'):
-            #t = htmlparser.unescape(entry.find('body').text)
-            #print(t)
-            t = entry.find('body').text
-            entry_tree = et.XML(t)
-            for img in entry_tree.iter('img'):
-                print(img.attrib['src'])
-            data += t
-            data += '<br/><br/>'
-
-        pdf = pisa.CreatePDF(
-            SIO.StringIO(data),
-            file(filename, "wb")
-        )
-
-        #if pdf.err:
-        #    dumpErrors(pdf)
+    #if pdf.err:
+    #    dumpErrors(pdf)
 
 def config_zendesk(config_file):
     """Read zendesk info from config file"""
@@ -167,7 +119,8 @@ def main(argv=None):
             return 1
 
         # Get the entries off disk and make the etree
-        #tree = et.ElementTree(file=args.entries_file)
+        with open(args.entries_file, 'r') as infile:
+            entries = json.loads(infile.read())
 
     # Get the entries from zendesk
     elif args.forum_id:
@@ -177,17 +130,18 @@ def main(argv=None):
 
         # If no title given, use the forum title from Zendesk
         if not args.pdf_title:
-            forum_tree = zd.show_forum(args.forum_id)
-            args.pdf_title = forum_tree.find('name').text
+            forum = zd.show_forum(forum_id=args.forum_id)
+            args.pdf_title = forum['name']
 
         # Get the entries and make the etree
-        entries = zd.list_entries(args.forum_id)
-        tree = et.XML(entries)
+        entries = zd.list_entries(forum_id=args.forum_id)
+        #print entries
 
         # If requested, save the downloaded entries file
         if args.keep_file:
             with open(args.keep_file, "w") as outfile:
-                outfile.write(entries)
+                outfile.write(json.dumps(entries))
+
     elif args.list_forums:
         # list available zendesk forums with their IDs and exit
         zd = config_zendesk(args.config_file)
@@ -195,8 +149,6 @@ def main(argv=None):
             return 1
 
         forums = zd.list_forums()
-        #print(forums)
-        #return 1
         for forum in forums:
             print(str(forum['id']) + ' ' + forum['name'])
         return 0
@@ -215,6 +167,6 @@ def main(argv=None):
     if not args.pdf_file:
         args.pdf_file = args.pdf_title + '.pdf'
 
-    zdf.xml2pdf(tree=tree, filename=args.pdf_file, title=args.pdf_title)
+    zdf2pdf(entries=entries, filename=args.pdf_file, title=args.pdf_title)
     return 0
 
