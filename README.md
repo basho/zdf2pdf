@@ -65,10 +65,15 @@ Download Freetype (version 2.4.9 used for this guide) from this URL:
 http://sourceforge.net/projects/freetype/files/freetype2/2.4.9/
 
     mkdir src && cd src
+    tar zxf freetype-2.4.9.tar.gz
+    cd freetype-2.4.9
+    ./configure --prefix=$VIRTUAL_ENV
+    make
+    make install
 
-Install PyCurl:
+Install httplib2, pycurl, simplejson, and xhtml2pdf:
 
-    pip install pycurl
+    pip install httplib2 pycurl simplejson xhtml2pdf
 
 Obtain zdfversion from this URL: <FIXME> add URL
 
