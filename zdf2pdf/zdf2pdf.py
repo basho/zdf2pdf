@@ -110,7 +110,7 @@ def main(argv=None):
         argv = sys.argv
     args = argp.parse_args()
 
-    # use an entries file on disk
+    # Use an entries file on disk
     if args.entries_file:
         # Refrain from guessing about the PDF title when using an entries file
         if not args.pdf_title:
@@ -118,7 +118,7 @@ def main(argv=None):
             print('       Use -t PDF_TITLE to specify a title.')
             return 1
 
-        # Get the entries off disk and make the etree
+        # Get the entries off disk
         with open(args.entries_file, 'r') as infile:
             entries = json.loads(infile.read())
 
@@ -133,9 +133,8 @@ def main(argv=None):
             forum = zd.show_forum(forum_id=args.forum_id)
             args.pdf_title = forum['name']
 
-        # Get the entries and make the etree
+        # Get the entries
         entries = zd.list_entries(forum_id=args.forum_id)
-        #print entries
 
         # If requested, save the downloaded entries file
         if args.keep_file:
@@ -143,7 +142,7 @@ def main(argv=None):
                 outfile.write(json.dumps(entries))
 
     elif args.list_forums:
-        # list available zendesk forums with their IDs and exit
+        # List available zendesk forums with their IDs and exit
         zd = config_zendesk(args.config_file)
         if not zd:
             return 1
@@ -152,6 +151,7 @@ def main(argv=None):
         for forum in forums:
             print(str(forum['id']) + ' ' + forum['name'])
         return 0
+
     else:
         from textwrap import dedent
         msg = dedent("""\
