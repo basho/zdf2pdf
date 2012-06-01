@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 """
 zdf2pdf: Create version specific documentation archives from Zendesk
 product documentation at https://help.basho.com
@@ -28,19 +30,34 @@ def zdf2pdf(entries, filename, title=''):
 
     data = '<h1>' + title + '</h1>'
     for entry in entries:
-        soup = BeautifulSoup(entry['body'])
-        for img in soup.find_all('img'):
-            print(img.attrs['src'])
+        data += '<h2>' + entry['title'] + '</h2>'
         data += entry['body']
-        data += '<br/><br/>'
+        data += '<br /><br />'
+
+    #soup = BeautifulSoup(data)
+    #print(soup.prettify())
+    #for img in soup.find_all('img'):
+    #    src = img.attrs['src']
+    #    srcfile = src.replace('/', '_')
+    #    # see if we already have this image
+    #    #os.path.isfile(
+    #    if src[0:4] != 'http':
+    #        pass
+    #        # append base url to relative srcs
 
     pdf = pisa.CreatePDF(
-        SIO.StringIO(data),
-        file(filename, "wb")
+        SIO.StringIO(data.encode('utf-8')),
+        file(filename, "wb"),
+        encoding = 'utf-8'
     )
 
-    #if pdf.err:
-    #    dumpErrors(pdf)
+    if pdf.err and pdf.log:
+        for mode, line, msg, code in pdf.log:
+            print "%s in line %d: %s" % (mode, line, msg)
+
+    if pdf.warn:
+        print "*** %d WARNINGS OCCURED" % pdf.warn
+
 
 def config_zendesk(config_file):
     """Read zendesk info from config file"""
@@ -77,6 +94,9 @@ def config_zendesk(config_file):
 
 def main(argv=None):
     import os, sys, argparse
+    import logging
+
+    logging.basicConfig()
 
     argp = argparse.ArgumentParser(
         description='Make a PDF from Zendesk forums.')
