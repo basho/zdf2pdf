@@ -9,14 +9,14 @@ documentation at http://help.basho.com/.
 
 The process for creating a documentation archive is fairly straightforward,
 but involves some one-time preparation of the Zendesk account for users
-making documentation archives. Additional time is required to establish a working environment for the documentation archiving utility, zdfversion.
+making documentation archives. Additional time is required to establish a working environment for the documentation archiving utility, zdf2pdf.
 
 Here are the essential steps for a basic documentation archiving run:
 
 1. One time set up of Zendesk user API token.
 2. One time set up of Python virtualenv work environment.
-3. Get zdfversion: <TODO> add URL
-4. Run `zdfversion` for the documentation set(s) you wish to archive.
+3. Get zdf2pdf: <TODO> add URL
+4. Run `zdf2pdf` for the documentation set(s) you wish to archive.
 5. Create a new entry in the Archived Documentation section of
 Zendesk Documentation at https://help.basho.com.
 6. Add your generated archive PDF to the entry with any additional notes, etc.
@@ -25,7 +25,7 @@ The details for each step above will be presented in the following sections.
 
 ## Zendesk API Token Setup
 
-To use zdfversion as shown in the **zdfversion Utility** section, you
+To use zdf2pdf as shown in the **zdf2pdf Utility** section, you
 must first generate a Zendesk API token for your account. This token helps
 you to avoid disclosing your Zendesk user account password, and it can be
 regenerated or disabled altogether at any time.
@@ -48,16 +48,16 @@ you plan to archive documentation.
 
 ## Virtual Environment Setup
 
-The most effective way to set up for using zdfversion is to install
+The most effective way to set up for using zdf2pdf is to install
 virtualenv, and follow these steps:
 
 Create a new virtualenv:
 
-    virtualenv zdfversion
+    virtualenv zdf2pdf
 
 Activate the virtualenv:
 
-    cd zdfversion && source bin/activate
+    cd zdf2pdf && source bin/activate
 
 Build Freetype2:
 
@@ -71,47 +71,47 @@ http://sourceforge.net/projects/freetype/files/freetype2/2.4.9/
     make
     make install
 
-Install httplib2, pycurl, simplejson, and xhtml2pdf:
+Install beautifulsoup4, httplib2, pycurl, simplejson, and xhtml2pdf:
 
-    pip install httplib2 pycurl simplejson xhtml2pdf
+    pip install beautifulsoup4 httplib2 pycurl simplejson xhtml2pdf
 
-Obtain zdfversion from this URL: <FIXME> add URL
+Obtain zdf2pdf from this URL: <FIXME> add URL
 
-Place zdfversion into the virtualenv you created, and execute it per the
-instructions in the **zdfversion Utility** section.
+Place zdf2pdf into the virtualenv you created, and execute it per the
+instructions in the **zdf2pdf Utility** section.
 
 More detailed information for installation and configuring virtualenv for
 specific environments is available from the
 [virtualenv project page](http://pypi.python.org/pypi/virtualenv).
 
-## zdfversion Utility
+## zdf2pdf Utility
 
-zdfversion is the Python script for creating documentation snapshots. Once you have configured it for use with your Zendesk account, you can use it to archive documentation.
+zdf2pdf is the Python script for creating documentation snapshots. Once you have configured it for use with your Zendesk account, you can use it to archive documentation.
 
 ### Configuration
 
-Before using zdfversion, you must configure some basics, such as the target Zendesk URL, your account name, and your API token. These values are stored in the file `~/.zdfversion.cfg`, and the expected format of the file
+Before using zdf2pdf, you must configure some basics, such as the target Zendesk URL, your account name, and your API token. These values are stored in the file `~/.zdf2pdf.cfg`, and the expected format of the file
 is shown in this example:
 
-    [zdfversion]
+    [zdf2pdf]
     email = you@example.com
     token = dneib393fwEF3ifbsEXAMPLEdhb93dw343
     url = https://example.zendesk.com
 
-Once you have created a `~/.zdfversion.cfg` file with values specific to
-your installation, you can proceed to using zdfversion.
+Once you have created a `~/.zdf2pdf.cfg` file with values specific to
+your installation, you can proceed to using zdf2pdf.
 
 ### Usage
 
 The script can be invoked with the following synopsis:
 
-    zdfversion [-h] [-c CONFIG_FILE] [-f ENTRIES_FILE | -i FORUM_ID | -l]
+    zdf2pdf [-h] [-c CONFIG_FILE] [-f ENTRIES_FILE | -i FORUM_ID | -l]
                       [-k KEEP_FILE] [-o PDF_FILE] [-t PDF_TITLE] [-v]
 
 
 #### Listing forums
 
-    zdfversion -l
+    zdf2pdf -l
 
 The output consists of a listing of forum identifiers and their names:
 
@@ -127,10 +127,10 @@ The output consists of a listing of forum identifiers and their names:
 
 #### Generate PDF from Forums URL
 
-To generate a PDF archive document directly from a particular forum URL and save the PDF with a certain title and filename, execute zdfversion
+To generate a PDF archive document directly from a particular forum URL and save the PDF with a certain title and filename, execute zdf2pdf
 with the `-i`, `-t`, and `-o` options:
 
-    zdfversion -i 20828562 -t "Great Justice" -o great_justice-v1.pdf
+    zdf2pdf -i 20828562 -t "Great Justice" -o great_justice-v1.pdf
 
 where the `-i` option specifies a Zendesk forum identifier, which is the 8-digit string that makes up part of a Zendesk forum URL. For example, in the
 following URL:
@@ -141,26 +141,28 @@ the forum identifier is **20748808**.
 
 The `-t` option specifies a title for the PDF document, which appears in the document text.
 
-Finally, the `-o` option tells zdfversion to save the PDF with the filename `great_justice-v1.pdf`.
+Finally, the `-o` option tells zdf2pdf to save the PDF with the filename `great_justice-v1.pdf`.
 
-#### Generate PDF from Forums XML File
+#### Generate PDF from Forums JSON File
 
-To generate a PDF archive document from an existing XML file containing
+To generate a PDF archive document from an existing JSON file containing
 Zendesk forum entries, and give a custom title to the document,
-execute zdfversion with the `-f` and `-t` options:
+execute zdf2pdf with the `-f` and `-t` options:
 
-    zdfversion -f my_file.xml -t "Documentation Archive"
+    zdf2pdf -f my_file.json -t "Documentation Archive"
 
-The above command will open the file `my_file.xml`, and generate a PDF titled
+The above command will open the file `my_file.json`, and generate a PDF titled
 "Documentation Archive", with the filename `Documentation Archive.pdf`.
 
 
 ## Notes
 
+* zdf2pdf uses Zendesk API version 2 with JSON
+
 ### Issues and Caveats
 
 There are potential issues and caveats with this process:
 
-* zdfversion does not currently handle additional forum metadata such
+* zdf2pdf does not currently handle additional forum metadata such
 as file attachments, but this is a planned capability that is in progress.
 
