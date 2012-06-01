@@ -15,11 +15,6 @@ try:
 except:
     import json
 
-try:
-    import xml.etree.cElementTree as et
-except ImportError:
-    import xml.etree.ElementTree as et
-
 def zdf2pdf(entries, filename, title=''):
     from bs4 import BeautifulSoup
     import xhtml2pdf.pisa as pisa
