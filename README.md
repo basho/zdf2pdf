@@ -14,8 +14,8 @@ making documentation archives. Additional time is required to establish a workin
 Here are the essential steps for a basic documentation archiving run:
 
 1. One time set up of Zendesk user API token.
-2. One time set up of Python virtualenv work environment.
-3. Get zdf2pdf: <TODO> add URL
+2. Get zdf2pdf: https://github.com/basho/zdf2pdf
+3. One time set up of Python virtualenv work environment and dependencies.
 4. Run `zdf2pdf` for the documentation set(s) you wish to archive.
 5. Create a new entry in the Archived Documentation section of
 Zendesk Documentation at https://help.basho.com.
@@ -51,7 +51,11 @@ you plan to archive documentation.
 The most effective way to set up for using zdf2pdf is to install
 virtualenv, and follow these steps:
 
-Create a new virtualenv:
+Clone the zdf2pdf repo:
+
+    git clone git@github.com:basho/zdf2pdf.git
+
+Create a new virtualenv in the clone directory:
 
     virtualenv zdf2pdf
 
@@ -70,15 +74,24 @@ http://sourceforge.net/projects/freetype/files/freetype2/2.4.9/
     ./configure --prefix=$VIRTUAL_ENV
     make
     make install
+    cd $VIRTUAL_ENV
 
 Install beautifulsoup4, httplib2, pycurl, simplejson, and xhtml2pdf:
 
     pip install beautifulsoup4 httplib2 pycurl simplejson xhtml2pdf
 
-Obtain zdf2pdf from this URL: <FIXME> add URL
+Clone the Python zendesk module:
 
-Place zdf2pdf into the virtualenv you created, and execute it per the
-instructions in the **zdf2pdf Utility** section.
+    cd src
+    git clone git@github.com:basho/zendesk.git
+    cd zendesk
+    python setup.py install
+    cd $VIRTUAL_ENV
+
+Finally, install zdf2pdf itself:
+
+    cd $VIRTUAL_ENV
+    python setup.py install
 
 More detailed information for installation and configuring virtualenv for
 specific environments is available from the
@@ -157,7 +170,14 @@ The above command will open the file `my_file.json`, and generate a PDF titled
 
 ## Notes
 
-* zdf2pdf uses Zendesk API version 2 with JSON
+* zdf2pdf uses Zendesk API version 1 with JSON
+* zdf2pdf depends on the following Python modules:
+ * beautifulsoup4
+ * httplib2
+ * pycurl
+ * simplejson
+ * xhtml2pdf
+ * zendesk
 
 ### Issues and Caveats
 
@@ -166,3 +186,8 @@ There are potential issues and caveats with this process:
 * zdf2pdf does not currently handle additional forum metadata such
 as file attachments, but this is a planned capability that is in progress.
 
+### Resources
+
+* zdf2pdf: https://github.com/basho/zdf2pdf
+* Python Zendesk module: https://github.com/basho/zendesk
+* Zendesk API: http://developer.zendesk.com/documentation/rest_api/introduction.html
