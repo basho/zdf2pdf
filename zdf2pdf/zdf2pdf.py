@@ -28,9 +28,10 @@ def zdf2pdf(entries, filename, title=''):
     except ImportError:
         import StringIO as SIO
 
-    data = '<h1>' + title + '</h1>'
+    data = '<style>h1,h2,h3,h4,h5,h5{font-family:Helvetica,arial,freesans,clean,sans-serif;}h1{font-size:33px;color:#3d3d3d;font-weight:700;}h2{font-size:24px;color:#141414;}h2{font-size:18px;color:#3d3d3d;}body,p{font-family:Helvetica,arial,freesans,clean,sans-serif;font-size:14px;}a{color:#4183C4;}</style>'
+    data += '<h1>' + title + '</h1>'
     for entry in entries:
-        data += '<h2>' + entry['title'] + '</h2>'
+        data += '<h1>' + entry['title'] + '</h1>'
         data += entry['body']
         data += '<br /><br />'
 
@@ -60,7 +61,7 @@ def zdf2pdf(entries, filename, title=''):
 
 
 def config_zendesk(config_file):
-    """Read zendesk info from config file"""
+    """Read Zendesk info from config file"""
     from zendesk import Zendesk
     import ConfigParser as configparser
 
@@ -72,7 +73,7 @@ def config_zendesk(config_file):
         url   = config.get('zdf2pdf', 'url')
 
         # Set up the zendesk object
-        zd = Zendesk(url, 
+        zd = Zendesk(url,
                     zendesk_username = email,
                     zendesk_password = token,
                     use_api_token = True)
