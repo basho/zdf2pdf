@@ -28,7 +28,7 @@ def zdf2pdf(entries, filename, title=''):
     except ImportError:
         import StringIO as SIO
 
-    data = '<style>h1,h2,h3,h4,h5,h5{font-family:Helvetica,arial,freesans,clean,sans-serif;}h1{font-size:33px;color:#3d3d3d;font-weight:700;}h2{font-size:24px;color:#141414;}h2{font-size:18px;color:#3d3d3d;}body,p{font-family:Helvetica,arial,freesans,clean,sans-serif;font-size:14px;}a{color:#4183C4;}</style>'
+    data = '<style>h1,h2,h3,h4,h5,h5{font-family:Helvetica,arial,freesans,clean,sans-serif;}h1{font-size:33px;color:#3d3d3d;font-weight:700;}h2{font-size:24px;color:#141414;}h2{font-size:18px;color:#3d3d3d;}body,p{font-family:Helvetica,arial,freesans,clean,sans-serif;font-size:12px;}a{color:#4183C4;}</style>'
     data += '<h1>' + title + '</h1>'
     for entry in entries:
         data += '<h1>' + entry['title'] + '</h1>'
