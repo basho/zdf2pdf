@@ -51,11 +51,7 @@ you plan to archive documentation.
 The most effective way to set up for using zdf2pdf is to install
 virtualenv, and follow these steps:
 
-Clone the zdf2pdf repo:
-
-    git clone git@github.com:basho/zdf2pdf.git
-
-Create a new virtualenv in the clone directory:
+Create a new virtualenv:
 
     virtualenv zdf2pdf
 
@@ -76,9 +72,9 @@ http://sourceforge.net/projects/freetype/files/freetype2/2.4.9/
     make install
     cd $VIRTUAL_ENV
 
-Install beautifulsoup4, httplib2, pycurl, simplejson, and xhtml2pdf:
+Install beautifulsoup4, httplib2, simplejson, and xhtml2pdf:
 
-    pip install beautifulsoup4 httplib2 pycurl simplejson xhtml2pdf
+    pip install beautifulsoup4 httplib2 simplejson xhtml2pdf
 
 Clone the Python zendesk module:
 
@@ -90,8 +86,16 @@ Clone the Python zendesk module:
 
 Finally, install zdf2pdf itself:
 
+    cd src
+    git clone git@github.com:basho/zdf2pdf.git
+    cd $VIRTUAL_ENV/lib/python2.7/site-packages
+    ln -s <path_to_code>/zdf2pdf/zdf2pdf
+    cd $VIRTUAL_ENV/bin
+    ln -s <path_to_code>/zdf2pdf/bin/zdf2pdf
     cd $VIRTUAL_ENV
-    python setup.py install
+
+Change `<path_to_code>` in the above example to the path where your zdf2pdf
+source code is kept.
 
 More detailed information for installation and configuring virtualenv for
 specific environments is available from the
@@ -99,11 +103,15 @@ specific environments is available from the
 
 ## zdf2pdf Utility
 
-zdf2pdf is the Python script for creating documentation snapshots. Once you have configured it for use with your Zendesk account, you can use it to archive documentation.
+zdf2pdf is the Python script for creating documentation snapshots. Once you
+have configured it for use with your Zendesk account, you can use it to
+archive documentation.
 
 ### Configuration
 
-Before using zdf2pdf, you must configure some basics, such as the target Zendesk URL, your account name, and your API token. These values are stored in the file `~/.zdf2pdf.cfg`, and the expected format of the file
+Before using zdf2pdf, you must configure some basics, such as the target
+Zendesk URL, your account name, and your API token. These values are stored
+in the file `~/.zdf2pdf.cfg`, and the expected format of the file
 is shown in this example:
 
     [zdf2pdf]
@@ -119,8 +127,9 @@ your installation, you can proceed to using zdf2pdf.
 The script can be invoked with the following synopsis:
 
     zdf2pdf [-h] [-c CONFIG_FILE] [-f ENTRIES_FILE | -i FORUM_ID | -l]
-                      [-k KEEP_FILE] [-o PDF_FILE] [-t PDF_TITLE] [-v]
+                   [-k KEEP_FILE] [-o PDF_FILE] [-t PDF_TITLE] [-v]
 
+Here are some basic usage examples:
 
 #### Listing forums
 
@@ -138,25 +147,29 @@ The output consists of a listing of forum identifiers and their names:
     20840027 Bar
     20846071 Baz
 
-#### Generate PDF from Forums URL
+#### Generate PDF from Forums URL by Forum ID
 
-To generate a PDF archive document directly from a particular forum URL and save the PDF with a certain title and filename, execute zdf2pdf
+To generate a PDF archive document directly from a particular forum URL and
+save the PDF with a certain title and filename, execute zdf2pdf
 with the `-i`, `-t`, and `-o` options:
 
     zdf2pdf -i 20828562 -t "Great Justice" -o great_justice-v1.pdf
 
-where the `-i` option specifies a Zendesk forum identifier, which is the 8-digit string that makes up part of a Zendesk forum URL. For example, in the
+where the `-i` option specifies a Zendesk forum identifier, which is the
+8-digit string that makes up part of a Zendesk forum URL. For example, in the
 following URL:
 
     https://help.basho.com/forums/20748808-operations
 
 the forum identifier is **20748808**.
 
-The `-t` option specifies a title for the PDF document, which appears in the document text.
+The `-t` option specifies a title for the PDF document, which appears in
+the document text.
 
-Finally, the `-o` option tells zdf2pdf to save the PDF with the filename `great_justice-v1.pdf`.
+Finally, the `-o` option tells zdf2pdf to save the PDF with the filename
+`great_justice-v1.pdf`.
 
-#### Generate PDF from Forums JSON File
+#### Generate PDF from a Forums JSON File
 
 To generate a PDF archive document from an existing JSON file containing
 Zendesk forum entries, and give a custom title to the document,
@@ -168,13 +181,36 @@ The above command will open the file `my_file.json`, and generate a PDF titled
 "Documentation Archive", with the filename `Documentation Archive.pdf`.
 
 
+#### Generate PDF from Forums URL with Custom Style
+
+To generate a PDF archive document directly from a particular forum URL, save
+the PDF with a certain title and filename, and apply a custom CSS stylesheet
+to the output, execute zdf2pdf with the `-i`, `-t`, `-o`, and `-s` options:
+
+    zdf2pdf -i 20828562 -t "Styled" -o styled.pdf -s ./style.css
+
+where the `-i` option specifies a Zendesk forum identifier, which is the
+8-digit string that makes up part of a Zendesk forum URL. For example, in the
+following URL:
+
+    https://help.basho.com/forums/20748808-operations
+
+the forum identifier is **20748808**.
+
+The `-t` option specifies a title for the PDF document, which appears in the
+document text.
+
+The `-o` option tells zdf2pdf to save the PDF with the filename `styled.pdf`.
+
+Finally, the `-s` option tells zdf2pdf to style the output with CSS from the
+file `style.css` located in the present working directory.
+
 ## Notes
 
 * zdf2pdf uses Zendesk API version 1 with JSON
 * zdf2pdf depends on the following Python modules:
  * beautifulsoup4
  * httplib2
- * pycurl
  * simplejson
  * xhtml2pdf
  * zendesk
@@ -184,10 +220,13 @@ The above command will open the file `my_file.json`, and generate a PDF titled
 There are potential issues and caveats with this process:
 
 * zdf2pdf does not currently handle additional forum metadata such
-as file attachments, but this is a planned capability that is in progress.
+  as file attachments, but this is a planned capability that is in progress.
+* Future versions of zdf2pdf will allow for a simpler syntax that can
+  automatically generate a given product documentation set with one switch.
+  (See also: issue #1)
 
 ### Resources
 
 * zdf2pdf: https://github.com/basho/zdf2pdf
 * Python Zendesk module: https://github.com/basho/zendesk
-* Zendesk API: http://developer.zendesk.com/documentation/rest_api/introduction.html
+* Zendesk Developer Site (For API information): http://developer.zendesk.com
