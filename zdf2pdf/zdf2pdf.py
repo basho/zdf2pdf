@@ -83,9 +83,9 @@ def config_zendesk(config_file):
 
             Expected config file to be of the format:
             [zdf2pdf]
-            email = you@example.com
-            token = dneib393fwEF3ifbsEXAMPLEdhb93dw343
-            url = https://example.zendesk.com
+            email: you@example.com
+            token: dneib393fwEF3ifbsEXAMPLEdhb93dw343
+            url: https://example.zendesk.com
             """)
         print(msg.format(config=config_file))
         return None
@@ -97,18 +97,22 @@ def main(argv=None):
     logging.basicConfig()
 
     argp = argparse.ArgumentParser(
-        description='Make a PDF from Zendesk forums.')
+        description='Make a PDF from Zendesk forums or entries.')
     argp.add_argument('-c', action='store', dest='config_file',
         default=os.path.expanduser('~') + '/.zdf2pdf.cfg',
         help='Zendesk configuration file (default: ~/.zdf2pdf.cfg)')
 
-    g1 = argp.add_mutually_exclusive_group()
-    g1.add_argument('-f', action='store', dest='entries_file',
-        help='Zendesk entries XML file to convert to PDF')
-    g1.add_argument('-i', action='store', dest='forum_id',
-        help='Zendesk forum ID to download and convert to PDF')
-    g1.add_argument('-l', action='store_true', dest='list_forums',
-        help='List Zendesk forums and IDs')
+    g1 = argp.add_mutually_exclusive_group(required=True)
+    g1.add_argument('-j', action='store', dest='json_file',
+        help='Zendesk entries JSON file to convert to PDF')
+    g1.add_argument('-f', action='store', dest='forums',
+        help='Comma separated forum IDs to download and convert to PDF')
+    g1.add_argument('-e', action='store', dest='entries',
+        help='Comma separated forum IDs to download and convert to PDF')
+    g1.add_argument('-l', action='store', dest='list_zdf',
+        help="""List a forum's entries by ID and title.  If no forum ID is
+        supplied, list forums by ID and title""",
+        nargs='?', const='forums', metavar='FORUM_TO_LIST')
 
     argp.add_argument('-s', action='store', dest='style_file',
         help='Style file (CSS) to embed')
@@ -131,8 +135,13 @@ def main(argv=None):
         argv = sys.argv
     args = argp.parse_args()
 
+    if args.entries or args.forums or args.list_zdf:
+        zd = config_zendesk(args.config_file)
+        if not zd:
+            return 1
+
     # Use an entries file on disk
-    if args.entries_file:
+    if args.json_file:
         # Refrain from guessing about the PDF title when using an entries file
         if not args.pdf_title:
             print('Error: Entries file specified but no title given.')
@@ -140,40 +149,73 @@ def main(argv=None):
             return 1
 
         # Get the entries off disk
-        with open(args.entries_file, 'r') as infile:
+        with open(args.json_file, 'r') as infile:
             entries = json.loads(infile.read())
 
-    # Get the entries from zendesk
-    elif args.forum_id:
-        zd = config_zendesk(args.config_file)
-        if not zd:
+    # Get individual entries from zendesk
+    elif args.entries:
+        # Refrain from guessing the PDF title when using individual entries
+        if not args.pdf_title:
+            print('Error: Entry IDs specified but no title given.')
+            print('       Use -t PDF_TITLE to specify a title.')
             return 1
 
+        # Get the entries and build the json file
+        entries = []
+        try:
+            entry_ids = [int(i) for i in args.entries.split(',')]
+            for entry_id in entry_ids:
+                entries += zd.show_entry(entry_id=entry_id)
+        except ValueError:
+            print('Error: Could not convert to integers: {}'.format(args.entries))
+            return 1
+
+    # Get the entries from one or more zendesk forums
+    elif args.forums:
         # If no title given, use the forum title from Zendesk
         if not args.pdf_title:
-            forum = zd.show_forum(forum_id=args.forum_id)
+            forum = zd.show_forum(forum_id=args.forums)
             args.pdf_title = forum['name']
 
-        # Get the entries
-        entries = zd.list_entries(forum_id=args.forum_id)
+        # Get the forum entries
+        entries = []
+        try:
+            forum_ids = [int(i) for i in args.forums.split(',')]
+            for forum_id in forum_ids:
+                entries += zd.list_entries(forum_id=args.forums)
+        except ValueError:
+            print('Error: Could not convert to integers: {}'.format(args.forums))
+            return 1
 
         # If requested, save the downloaded entries file
         if args.keep_file:
             with open(args.keep_file, "w") as outfile:
                 outfile.write(json.dumps(entries))
 
-    elif args.list_forums:
-        # List available zendesk forums with their IDs and exit
-        zd = config_zendesk(args.config_file)
-        if not zd:
-            return 1
-
+    elif args.list_zdf == 'forums':
+        # List available zendesk forums with their IDs and titles and exit
         forums = zd.list_forums()
         for forum in forums:
             print(str(forum['id']) + ' ' + forum['name'])
         return 0
 
+    elif args.list_zdf:
+        # List a zendesk forum's entries with their IDs and titles and exit
+        try:
+            forum_id = int(args.list_zdf)
+        except ValueError:
+            print('Error: Could not convert to integer: {}'.format(args.list_zdf))
+            return 1
+
+        entries = zd.list_entries(forum_id=args.list_zdf)
+        for entry in entries:
+            print(str(entry['id']) + ' ' + entry['title'])
+        return 0
+
     else:
+        # Should never get here, since the mutually exclusive argparse
+        # group is set to required
+        print args.list_zdf
         from textwrap import dedent
         msg = dedent("""\
             Error: One of the following is required:
