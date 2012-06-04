@@ -126,8 +126,8 @@ def main(argv=None):
     argp.add_argument('-k', action='store', dest='keep_file',
         help='Keep the fetched entries xml file at the given file path')
     argp.add_argument('-o', action='store', dest='pdf_file',
-        help='PDF output filename (default: zendesk.pdf)',
-        default='zendesk.pdf')
+        help='PDF output filename (default: PCLOADLETTER.PDF)',
+        default='PCLOADLETTER.PDF')
 
     argp.add_argument('-t', action='store', dest='pdf_title',
         help='Title to be added to the beginning of the PDF', default=None)
