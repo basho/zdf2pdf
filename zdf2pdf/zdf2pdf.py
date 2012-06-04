@@ -13,7 +13,7 @@ try:
 except:
     import json
 
-def zdf2pdf(entries, filename, title='', style=None):
+def zdf2pdf(entries, filename, title=None, style=None):
     from bs4 import BeautifulSoup
     import xhtml2pdf.pisa as pisa
     try:
@@ -28,7 +28,9 @@ def zdf2pdf(entries, filename, title='', style=None):
 
     data += '</head>'
 
-    data += '<h1>' + title + '</h1>'
+    if title:
+        data += '<h1>' + title + '</h1>'
+
     for entry in entries:
         data += '<h1>' + entry['title'] + '</h1>'
         data += entry['body']
@@ -123,11 +125,12 @@ def main(argv=None):
     # See: http://bugs.python.org/issue11588
     argp.add_argument('-k', action='store', dest='keep_file',
         help='Keep the fetched entries xml file at the given file path')
-
     argp.add_argument('-o', action='store', dest='pdf_file',
-        help='PDF output filename')
+        help='PDF output filename (default: zendesk.pdf)',
+        default='zendesk.pdf')
+
     argp.add_argument('-t', action='store', dest='pdf_title',
-        help='PDF title')
+        help='Title to be added to the beginning of the PDF', default=None)
     argp.add_argument('-v', '--verbose', action='store_true',
         help='Verbose output')
 
@@ -142,47 +145,28 @@ def main(argv=None):
 
     # Use an entries file on disk
     if args.json_file:
-        # Refrain from guessing about the PDF title when using an entries file
-        if not args.pdf_title:
-            print('Error: Entries file specified but no title given.')
-            print('       Use -t PDF_TITLE to specify a title.')
-            return 1
-
         # Get the entries off disk
         with open(args.json_file, 'r') as infile:
             entries = json.loads(infile.read())
 
     # Get individual entries from zendesk
     elif args.entries:
-        # Refrain from guessing the PDF title when using individual entries
-        if not args.pdf_title:
-            print('Error: Entry IDs specified but no title given.')
-            print('       Use -t PDF_TITLE to specify a title.')
-            return 1
-
-        # Get the entries and build the json file
         entries = []
         try:
             entry_ids = [int(i) for i in args.entries.split(',')]
             for entry_id in entry_ids:
-                entries += zd.show_entry(entry_id=entry_id)
+                entries.append(zd.show_entry(entry_id=entry_id))
         except ValueError:
             print('Error: Could not convert to integers: {}'.format(args.entries))
             return 1
 
     # Get the entries from one or more zendesk forums
     elif args.forums:
-        # If no title given, use the forum title from Zendesk
-        if not args.pdf_title:
-            forum = zd.show_forum(forum_id=args.forums)
-            args.pdf_title = forum['name']
-
-        # Get the forum entries
         entries = []
         try:
             forum_ids = [int(i) for i in args.forums.split(',')]
             for forum_id in forum_ids:
-                entries += zd.list_entries(forum_id=args.forums)
+                entries += zd.list_entries(forum_id=forum_id)
         except ValueError:
             print('Error: Could not convert to integers: {}'.format(args.forums))
             return 1
@@ -225,10 +209,6 @@ def main(argv=None):
             """)
         print(msg)
         return 1
-
-    # If no PDF filename given, name it after the title
-    if not args.pdf_file:
-        args.pdf_file = args.pdf_title + '.pdf'
 
     zdf2pdf(entries=entries, filename=args.pdf_file, title=args.pdf_title,
             style=args.style_file)
