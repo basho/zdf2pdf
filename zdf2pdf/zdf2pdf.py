@@ -1,5 +1,3 @@
-# -*- coding: utf-8 -*-
-
 """
 zdf2pdf: Create version specific documentation archives from Zendesk
 product documentation at https://help.basho.com
@@ -15,7 +13,7 @@ try:
 except:
     import json
 
-def zdf2pdf(entries, filename, title=''):
+def zdf2pdf(entries, filename, title='', style=None):
     from bs4 import BeautifulSoup
     import xhtml2pdf.pisa as pisa
     try:
@@ -23,26 +21,30 @@ def zdf2pdf(entries, filename, title=''):
     except ImportError:
         import StringIO as SIO
 
-    data = '<style>h1,h2,h3,h4,h5,h5{font-family:Helvetica,arial,freesans,clean,sans-serif;}h1{font-size:33px;color:#3d3d3d;font-weight:700;}h2{font-size:24px;color:#141414;}h2{font-size:18px;color:#3d3d3d;}body,p{font-family:Helvetica,arial,freesans,clean,sans-serif;font-size:12px;}a{color:#4183C4;}</style>'
+    data = '<head>'
+
+    if style:
+        data += '<link rel="stylesheet" type="text/css" href="{}" />'.format(style)
+
+    data += '</head>'
+
     data += '<h1>' + title + '</h1>'
     for entry in entries:
         data += '<h1>' + entry['title'] + '</h1>'
         data += entry['body']
-        data += '<br /><br />'
 
-    #soup = BeautifulSoup(data)
-    #print(soup.prettify())
-    #for img in soup.find_all('img'):
-    #    src = img.attrs['src']
-    #    srcfile = src.replace('/', '_')
-    #    # see if we already have this image
-    #    #os.path.isfile(
-    #    if src[0:4] != 'http':
-    #        pass
-    #        # append base url to relative srcs
+    soup = BeautifulSoup(data)
+    for img in soup.find_all('img'):
+        src = img.attrs['src']
+        srcfile = src.replace('/', '_')
+        # see if we already have this image
+        #os.path.isfile(
+        if src[0:4] != 'http':
+            pass
+            # append base url to relative srcs
 
     pdf = pisa.CreatePDF(
-        SIO.StringIO(data.encode('utf-8')),
+        SIO.StringIO(soup.prettify().encode('utf-8')),
         file(filename, "wb"),
         encoding = 'utf-8'
     )
@@ -107,6 +109,9 @@ def main(argv=None):
         help='Zendesk forum ID to download and convert to PDF')
     g1.add_argument('-l', action='store_true', dest='list_forums',
         help='List Zendesk forums and IDs')
+
+    argp.add_argument('-s', action='store', dest='style_file',
+        help='Style file (CSS) to embed')
 
     # this should technically only be available if using -i, but argparse
     # doesn't support groups under mutually exclusive group ala
@@ -183,6 +188,7 @@ def main(argv=None):
     if not args.pdf_file:
         args.pdf_file = args.pdf_title + '.pdf'
 
-    zdf2pdf(entries=entries, filename=args.pdf_file, title=args.pdf_title)
+    zdf2pdf(entries=entries, filename=args.pdf_file, title=args.pdf_title,
+            style=args.style_file)
     return 0
 
