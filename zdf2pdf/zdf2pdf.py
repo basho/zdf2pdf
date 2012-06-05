@@ -58,75 +58,69 @@ def zdf2pdf(entries, filename, title=None, style=None):
     if pdf.warn:
         print "*** %d WARNINGS OCCURED" % pdf.warn
 
-
-def config_zendesk(config_file):
-    """Read Zendesk info from config file"""
-    from zendesk import Zendesk
+def main(argv=None):
+    import os, sys, tempfile, argparse
     import ConfigParser as configparser
 
-    config = configparser.RawConfigParser()
-    config.read(config_file)
-    try:
-        email = config.get('zdf2pdf', 'email')
-        token = config.get('zdf2pdf', 'token')
-        url   = config.get('zdf2pdf', 'url')
-
-        # Set up the zendesk object
-        zd = Zendesk(url,
-                    zendesk_username = email,
-                    zendesk_password = token,
-                    use_api_token = True)
-        return zd
-
-    except configparser.NoSectionError:
-        from textwrap import dedent
-        msg = dedent("""\
-            Error: Could not read settings from {config}
-
-            Expected config file to be of the format:
-            [zdf2pdf]
-            email: you@example.com
-            token: dneib393fwEF3ifbsEXAMPLEdhb93dw343
-            url: https://example.zendesk.com
-            """)
-        print(msg.format(config=config_file))
-        return None
-
-def main(argv=None):
-    import os, sys, argparse
+    # Log to stdout
     import logging
-
     logging.basicConfig()
+
+    # Options precedence:
+    # program state defaults, which are overridden by
+    # ~/.zdf2pdf.cfg [zdf2pdf] section options, which are overridden by
+    # command line options, which are overridden by
+    # -c CONFIG_FILE [zdf2pdf] section options, which are overridden by
+    # ~/.zdf2pdf.cfg [RUN_SECTION] section options, which are overridden by
+    # -c CONFIG_FILE [RUN_SECTION] section options
+    #
+    # Program state, with defaults
+    #
+    state = {
+        'verbose': False,
+        'json_file': None,
+        'forums': None,
+        'entries': None,
+        'run_section': None,
+        'list_zdf': 'forums',
+        'style_file': None,
+        'output_file': 'PCLOADLETTER.pdf',
+        'title': None,
+        'work_dir': tempfile.gettempdir(),
+        'del_dir': False,
+        'url': None,
+        'mail': None,
+        'password': 'prompt',
+        'is_token': False,
+    }
 
     argp = argparse.ArgumentParser(
         description='Make a PDF from Zendesk forums or entries.')
-    argp.add_argument('-v', action='store_true',
+    argp.add_argument('-v', '--verbose', action='store_true',
         help='Verbose output')
 
-    g1 = argp.add_mutually_exclusive_group(required=True)
-    g1.add_argument('-j', action='store', dest='json_file',
+    argp.add_argument('-j', action='store', dest='json_file',
         help='Zendesk entries JSON file to convert to PDF')
-    g1.add_argument('-f', action='store', dest='forums',
+    argp.add_argument('-f', action='store', dest='forums',
         help='Comma separated Forum IDs to download and convert to PDF')
-    g1.add_argument('-e', action='store', dest='entries',
+    argp.add_argument('-e', action='store', dest='entries',
         help='Comma separated Entry IDs to download and convert to PDF')
-    g1.add_argument('-r', action='store', dest='run_section',
+    argp.add_argument('-r', action='store', dest='run_section',
         help='Run pre-configured section in configuration file')
-    g1.add_argument('-l', action='store', dest='list_zdf',
+    argp.add_argument('-l', action='store', dest='list_zdf',
         help="""List a forum's entries by ID and title.  If no forum ID is
         supplied, list forums by ID and title""",
-        nargs='?', const='forums', metavar='FORUM_TO_LIST')
+        nargs='?', const=state['list_zdf'], metavar='FORUM_TO_LIST')
 
     argp.add_argument('-c', action='store', dest='config_file',
-        default=os.path.expanduser('~') + '/.zdf2pdf.cfg',
-        help='Configuration file (default: ~/.zdf2pdf.cfg)')
+        help='Configuration file (overrides ~/.zdf2pdf.cfg)')
     argp.add_argument('-s', action='store', dest='style_file',
         help='Style file (CSS) to <link>')
     argp.add_argument('-o', action='store', dest='output_file',
         help='Output filename (default: PCLOADLETTER.PDF)',
-        default='PCLOADLETTER.PDF')
+        default=state['output_file'])
     argp.add_argument('-t', action='store', dest='title',
-        help='Title to be added to the beginning of the PDF', default=None)
+        help='Title to be added to the beginning of the PDF')
 
     argp.add_argument('-w', action='store', dest='work_dir',
         help='Working directory in which to stores JSON and images (default: temp dir)')
@@ -138,87 +132,164 @@ def main(argv=None):
     argp.add_argument('-m', action='store', dest='mail',
         help='E-Mail address for Zendesk login')
     argp.add_argument('-p', action='store', dest='password',
-        help='Password for Zendesk login')
-    argp.add_argument('-i', action='store_true', dest='is_token',
+        help='Password for Zendesk login',
+        nargs='?', const=state['password'])
+    argp.add_argument('-i', '--is-token', action='store_true', dest='is_token',
         help='Is token? Specify if password supplied a Zendesk token')
 
+    # Set argparse defaults with program defaults.
+    # Skip password and list_zdf as they are const, not default
+    argp.set_defaults(**dict((k, v) for k, v in state.iteritems() if k is not 'password' and k is not 'list_zdf'))
+
+    # Read ~/.zdf2pdf.cfg [zdf2pdf] section and update argparse defaults
+    config = configparser.SafeConfigParser()
+    config.read(os.path.expanduser('~') + '/.zdf2pdf.cfg')
+    try:
+        argp.set_defaults(**dict(config.items('zdf2pdf')))
+    except:
+        pass
+
+    # Parse the command line and update program state
     if argv is None:
         argv = sys.argv
     args = argp.parse_args()
+    for k in state.keys():
+        state[k] = getattr(args, k)
 
-    if args.entries or args.forums or args.list_zdf:
-        zd = config_zendesk(args.config_file)
-        if not zd:
-            return 1
-
-    # Use an entries file on disk
-    if args.json_file:
-        # Get the entries off disk
-        with open(args.json_file, 'r') as infile:
-            entries = json.loads(infile.read())
-
-    # Get individual entries from zendesk
-    elif args.entries:
-        entries = []
+    # If -c given on command line read args.config_file [zdf2pdf], update state
+    if args.config_file:
+        cmd_line_config = configparser.SafeConfigParser()
+        cmd_line_config.read(args.config_file)
+        cmd_line_config_dict = dict(cmd_line_config.items('zdf2pdf'))
+        for k in state.keys():
+            try:
+                state[k] = cmd_line_config_dict[k]
+            except:
+                pass
+        # Treat is_token and verbose specially since they are boolean
         try:
-            entry_ids = [int(i) for i in args.entries.split(',')]
-            for entry_id in entry_ids:
-                entries.append(zd.show_entry(entry_id=entry_id))
-        except ValueError:
-            print('Error: Could not convert to integers: {}'.format(args.entries))
-            return 1
-
-    # Get the entries from one or more zendesk forums
-    elif args.forums:
-        entries = []
+            state['verbose'] = cmd_line_config.getboolean('zdf2pdf', verbose)
+        except:
+            pass
         try:
-            forum_ids = [int(i) for i in args.forums.split(',')]
-            for forum_id in forum_ids:
-                entries += zd.list_entries(forum_id=forum_id)
-        except ValueError:
-            print('Error: Could not convert to integers: {}'.format(args.forums))
+            state['is_token'] = cmd_line_config.getboolean('zdf2pdf', is_token)
+        except:
+            pass
+
+    # If -r given, update state with [RUN_SECTION] from config and 
+    # cmd_line_config, if they exist
+    if args.run_section:
+        config_dict = dict(config.items(args.run_section))
+        for k in state.keys():
+            try:
+                state[k] = config_dict[k]
+            except:
+                pass
+        # Treat is_token and verbose specially since they are boolean
+        try:
+            state['verbose'] = config.getboolean(args.run_section, verbose)
+        except:
+            pass
+        try:
+            state['is_token'] = config.getboolean(args.run_section, is_token)
+        except:
+            pass
+
+        if args.config_file:
+            cmd_line_config_dict = dict(cmd_line_config.items(args.run_section))
+            for k in state.keys():
+                try:
+                    state[k] = cmd_line_config_dict[k]
+                except:
+                    pass
+            # Treat is_token and verbose specially since they are boolean
+            try:
+                state['verbose'] = cmd_line_config.getboolean(args.run_section, verbose)
+            except:
+                pass
+            try:
+                state['is_token'] = cmd_line_config.getboolean(args.run_section, is_token)
+            except:
+                pass
+
+    if state['entries'] or state['forums'] or state['list_zdf']:
+        from zendesk import Zendesk
+        if state['url'] and state['mail'] and state['password']:
+            zd = Zendesk(state['url'],
+                        zendesk_username = state['mail'],
+                        zendesk_password = state['password'],
+                        use_api_token = state['is_token'])
+        else:
+            from textwrap import dedent
+            msg = dedent("""\
+                Error: Need Zendesk config for requested operation. Use -u, -m,
+                       -p options or a config file to provide the information.
+
+                Config file (e.g. ~/.zdf2pdf.cfg) should be something like:
+                [zdf2pdf]
+                url = https://example.zendesk.com
+                mail = you@example.com
+                password = dneib393fwEF3ifbsEXAMPLEdhb93dw343
+                is_token = 1
+                """)
+            print(msg)
             return 1
 
-        # If requested, save the downloaded entries file
-        if args.keep_file:
-            with open(args.keep_file, "w") as outfile:
-                outfile.write(json.dumps(entries))
-
-    elif args.list_zdf == 'forums':
+    if state['list_zdf'] == 'forums':
         # List available zendesk forums with their IDs and titles and exit
         forums = zd.list_forums()
         for forum in forums:
             print(str(forum['id']) + ' ' + forum['name'])
         return 0
 
-    elif args.list_zdf:
+    elif state['list_zdf']:
         # List a zendesk forum's entries with their IDs and titles and exit
         try:
-            forum_id = int(args.list_zdf)
+            forum_id = int(state['list_zdf'])
         except ValueError:
-            print('Error: Could not convert to integer: {}'.format(args.list_zdf))
+            print('Error: Could not convert to integer: {}'.format(state['list_zdf']))
             return 1
 
-        entries = zd.list_entries(forum_id=args.list_zdf)
+        entries = zd.list_entries(forum_id=state['list_zdf'])
         for entry in entries:
             print(str(entry['id']) + ' ' + entry['title'])
         return 0
 
+
+    # Use an entries file on disk
+    if state['json_file']:
+        # Get the entries off disk
+        with open(state['json_file'], 'r') as infile:
+            entries = json.loads(infile.read())
     else:
-        # Should never get here, since the mutually exclusive argparse
-        # group is set to required
-        print args.list_zdf
-        from textwrap import dedent
-        msg = dedent("""\
-            Error: One of the following is required:
-              -l option to list forums
-              -i FORUM_ID to retrieve
-              -f ENTRIES_FILE to convert
-            """)
-        print(msg)
+        entries = []
+
+    # Get the entries from one or more zendesk forums
+    if state['forums']:
+        try:
+            forum_ids = [int(i) for i in state['forums'].split(',')]
+            for forum_id in forum_ids:
+                entries += zd.list_entries(forum_id=forum_id)
+        except ValueError:
+            print('Error: Could not convert to integers: {}'.format(state['forums']))
+            return 1
+
+    # Get individual entries from zendesk
+    if state['entries']:
+        try:
+            entry_ids = [int(i) for i in state['entries'].split(',')]
+            for entry_id in entry_ids:
+                entries.append(zd.show_entry(entry_id=entry_id))
+        except ValueError:
+            print('Error: Could not convert to integers: {}'.format(state['entries']))
+            return 1
+
+    if len(entries) == 0:
+        # Didn't get entries from any inputs.
+        print("Error: Did not receive any entries.")
         return 1
 
-    zdf2pdf(entries=entries, filename=args.pdf_file, title=args.pdf_title,
-            style=args.style_file)
+    zdf2pdf(entries=entries, filename=state['output_file'],
+            title=state['title'], style=state['style_file'])
     return 0
 
