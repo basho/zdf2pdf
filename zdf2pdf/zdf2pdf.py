@@ -100,39 +100,47 @@ def main(argv=None):
 
     argp = argparse.ArgumentParser(
         description='Make a PDF from Zendesk forums or entries.')
-    argp.add_argument('-c', action='store', dest='config_file',
-        default=os.path.expanduser('~') + '/.zdf2pdf.cfg',
-        help='Zendesk configuration file (default: ~/.zdf2pdf.cfg)')
+    argp.add_argument('-v', action='store_true',
+        help='Verbose output')
 
     g1 = argp.add_mutually_exclusive_group(required=True)
     g1.add_argument('-j', action='store', dest='json_file',
         help='Zendesk entries JSON file to convert to PDF')
     g1.add_argument('-f', action='store', dest='forums',
-        help='Comma separated forum IDs to download and convert to PDF')
+        help='Comma separated Forum IDs to download and convert to PDF')
     g1.add_argument('-e', action='store', dest='entries',
-        help='Comma separated forum IDs to download and convert to PDF')
+        help='Comma separated Entry IDs to download and convert to PDF')
+    g1.add_argument('-r', action='store', dest='run_section',
+        help='Run pre-configured section in configuration file')
     g1.add_argument('-l', action='store', dest='list_zdf',
         help="""List a forum's entries by ID and title.  If no forum ID is
         supplied, list forums by ID and title""",
         nargs='?', const='forums', metavar='FORUM_TO_LIST')
 
+    argp.add_argument('-c', action='store', dest='config_file',
+        default=os.path.expanduser('~') + '/.zdf2pdf.cfg',
+        help='Configuration file (default: ~/.zdf2pdf.cfg)')
     argp.add_argument('-s', action='store', dest='style_file',
-        help='Style file (CSS) to embed')
-
-    # this should technically only be available if using -i, but argparse
-    # doesn't support groups under mutually exclusive group ala
-    # [ -i FORUM_ID [-k KEEP_FILE] ] | [ -f ENTRIES_FILE ] ]
-    # See: http://bugs.python.org/issue11588
-    argp.add_argument('-k', action='store', dest='keep_file',
-        help='Keep the fetched entries xml file at the given file path')
-    argp.add_argument('-o', action='store', dest='pdf_file',
-        help='PDF output filename (default: PCLOADLETTER.PDF)',
+        help='Style file (CSS) to <link>')
+    argp.add_argument('-o', action='store', dest='output_file',
+        help='Output filename (default: PCLOADLETTER.PDF)',
         default='PCLOADLETTER.PDF')
-
-    argp.add_argument('-t', action='store', dest='pdf_title',
+    argp.add_argument('-t', action='store', dest='title',
         help='Title to be added to the beginning of the PDF', default=None)
-    argp.add_argument('-v', '--verbose', action='store_true',
-        help='Verbose output')
+
+    argp.add_argument('-w', action='store', dest='work_dir',
+        help='Working directory in which to stores JSON and images (default: temp dir)')
+    argp.add_argument('-d', action='store_true', dest='del_dir',
+        help='Delete working directory at program exit')
+
+    argp.add_argument('-u', action='store', dest='url',
+        help='URL of Zendesk (e.g. https://example.zendesk.com)')
+    argp.add_argument('-m', action='store', dest='mail',
+        help='E-Mail address for Zendesk login')
+    argp.add_argument('-p', action='store', dest='password',
+        help='Password for Zendesk login')
+    argp.add_argument('-i', action='store_true', dest='is_token',
+        help='Is token? Specify if password supplied a Zendesk token')
 
     if argv is None:
         argv = sys.argv
