@@ -94,6 +94,10 @@ def main(argv=None):
         'is_token': False,
     }
 
+    # A list of program state items which are booleans.
+    # Kept for convience as they are treated specially when parsing configs.
+    state_bools = [k for k, v in state.iteritems() if isinstance(v, bool)]
+
     argp = argparse.ArgumentParser(
         description='Make a PDF from Zendesk forums or entries.')
     argp.add_argument('-v', '--verbose', action='store_true',
@@ -143,67 +147,104 @@ def main(argv=None):
     # Skip password and list_zdf as they are const, not default
     argp.set_defaults(**dict((k, v) for k, v in state.iteritems() if k is not 'password' and k is not 'list_zdf'))
 
-    # Read ~/.zdf2pdf.cfg [zdf2pdf] section and update argparse defaults
+    # Read ~/.zdf2pdf.cfg [zdf2pdf] section for updating argparse defaults
     config = configparser.SafeConfigParser()
     config.read(os.path.expanduser('~') + '/.zdf2pdf.cfg')
-    try:
-        argp.set_defaults(**dict(config.items('zdf2pdf')))
-    except:
-        pass
+    config_dict = dict(config.items('zdf2pdf'))
 
-    # Parse the command line and update program state
+    # Treat bool values specially using getboolean (allows for 1, yes, true)
+    for k in state_bools:
+        try:
+            config_dict[k] = config.getboolean('zdf2pdf', k)
+        except configparser.NoOptionError:
+            # This config file did not contain this option. Skip it.
+            pass
+
+    # Update the argparse defaults with options read from ~/.zdf2pdf.cfg
+    argp.set_defaults(**config_dict)
+
+    # Parse the command line options
     if argv is None:
         argv = sys.argv
     args = argp.parse_args()
+
+    # Update the program state with command line options
     for k in state.keys():
         state[k] = getattr(args, k)
 
-    # If -c given on command line read args.config_file [zdf2pdf], update state
+    # -c CONFIG_FILE given on command line read args.config_file [zdf2pdf], update state
     if args.config_file:
+        # read the config file
         cmd_line_config = configparser.SafeConfigParser()
         cmd_line_config.read(args.config_file)
-        cmd_line_config_dict = dict(cmd_line_config.items('zdf2pdf'))
-        for k in state.keys():
-            try:
-                state[k] = cmd_line_config_dict[k]
-            except:
-                pass
-        # Treat bool values specially using getboolean (allows for 1, yes, true)
-        for k in [k for k, v in cmd_line_config_dict.iteritems() if isinstance(v, bool)]:
-            try:
-                state[k] = cmd_line_config.getboolean('zdf2pdf', k)
-            except:
-                pass
+        try:
+            # look for [zdf2pdf] section, make it a dictionary
+            cmd_line_config_dict = dict(cmd_line_config.items('zdf2pdf'))
 
-    # If -r given, update state with [RUN_SECTION] from config and 
-    # cmd_line_config, if they exist
-    if args.run_section:
-        config_dict = dict(config.items(args.run_section))
-        for k in state.keys():
-            try:
-                state[k] = config_dict[k]
-            except:
-                pass
-        # Treat bool values specially using getboolean (allows for 1, yes, true)
-        for k in [k for k, v in config_dict.iteritems() if isinstance(v, bool)]:
-            try:
-                state[k] = config.getboolean(args.run_section, k)
-            except:
-                pass
-
-        if args.config_file:
-            cmd_line_config_dict = dict(cmd_line_config.items(args.run_section))
-            for k in state.keys():
-                try:
-                    state[k] = cmd_line_config_dict[k]
-                except:
-                    pass
             # Treat bool values specially using getboolean (allows for 1, yes, true)
-            for k in [k for k, v in cmd_line_config_dict.iteritems() if isinstance(v, bool)]:
+            for k in state_bools:
                 try:
-                    state[k] = cmd_line_config.getboolean(args.run_section, k)
-                except:
+                    cmd_line_config_dict[k] = cmd_line_config.getboolean('zdf2pdf', k)
+                except configparser.NoOptionError:
+                    # This config file did not contain this option. Skip it.
                     pass
+
+            # update the program state with the [zdf2pdf] section dict
+            state.update(cmd_line_config_dict)
+
+        except configparser.NoSectionError:
+            # -c CONFIG_FILE did not have a [zdf2pdf] section. Skip it.
+            pass
+
+    # -r RUN_SECTION given
+    if args.run_section:
+        # look for RUN_SECTION in ~/.zdf2pdf.cfg
+        section_found = False
+        try:
+            # look for RUN_SECTION section, make it a dictionary
+            config_dict = dict(config.items(args.run_section))
+            section_found = True
+
+            # Treat bool values specially using getboolean (allows for 1, yes, true)
+            for k in state_bools:
+                try:
+                    config_dict[k] = config.getboolean(args.run_section, k)
+                except configparser.NoOptionError:
+                    # This config file did not contain this option. Skip it.
+                    pass
+
+            # update the program state with the RUN_SECTION section dict
+            state.update(config_dict)
+
+        except configparser.NoSectionError:
+            # ~/.zdf2pdf.cfg did not have this section. Hope it's found later.
+            pass
+
+        # -c CONFIG_FILE and -r RUN_SECTION given
+        if args.config_file:
+            # look for RUN_SECTION in CONFIG_FILE
+            try:
+                # look for RUN_SECTION section, make it a dictionary
+                cmd_line_config_dict = dict(cmd_line_config.items(args.run_section))
+                section_found = True
+
+                # Treat bool values specially using getboolean (allows for 1, yes, true)
+                for k in state_bools:
+                    try:
+                        cmd_line_config_dict[k] = cmd_line_config.getboolean(args.run_section, k)
+                    except configparser.NoOptionError:
+                        # This config file did not contain this option. Skip it.
+                        pass
+
+                # update the program state with the RUN_SECTION section dict
+                state.update(cmd_line_config_dict)
+
+            except configparser.NoSectionError:
+                # CONFIG_FILE did not have this section.
+                # If the section wasn't found, print an error and exit
+                if not section_found:
+                    print('Error: Run section {} was not found'.format(args.run_section))
+                    return 1
 
     if state['entries'] or state['forums'] or state['list_zdf']:
         from zendesk import Zendesk
