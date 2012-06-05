@@ -87,7 +87,7 @@ def main(argv=None):
         'output_file': 'PCLOADLETTER.pdf',
         'title': None,
         'work_dir': tempfile.gettempdir(),
-        'del_dir': False,
+        'delete': False,
         'url': None,
         'mail': None,
         'password': 'prompt',
@@ -124,7 +124,7 @@ def main(argv=None):
 
     argp.add_argument('-w', action='store', dest='work_dir',
         help='Working directory in which to stores JSON and images (default: temp dir)')
-    argp.add_argument('-d', action='store_true', dest='del_dir',
+    argp.add_argument('-d', '--delete', action='store_true', dest='delete',
         help='Delete working directory at program exit')
 
     argp.add_argument('-u', action='store', dest='url',
@@ -166,15 +166,12 @@ def main(argv=None):
                 state[k] = cmd_line_config_dict[k]
             except:
                 pass
-        # Treat is_token and verbose specially since they are boolean
-        try:
-            state['verbose'] = cmd_line_config.getboolean('zdf2pdf', verbose)
-        except:
-            pass
-        try:
-            state['is_token'] = cmd_line_config.getboolean('zdf2pdf', is_token)
-        except:
-            pass
+        # Treat bool values specially using getboolean (allows for 1, yes, true)
+        for k in [k for k, v in cmd_line_config_dict.iteritems() if isinstance(v, bool)]
+            try:
+                state[k] = cmd_line_config.getboolean('zdf2pdf', k)
+            except:
+                pass
 
     # If -r given, update state with [RUN_SECTION] from config and 
     # cmd_line_config, if they exist
@@ -185,15 +182,12 @@ def main(argv=None):
                 state[k] = config_dict[k]
             except:
                 pass
-        # Treat is_token and verbose specially since they are boolean
-        try:
-            state['verbose'] = config.getboolean(args.run_section, verbose)
-        except:
-            pass
-        try:
-            state['is_token'] = config.getboolean(args.run_section, is_token)
-        except:
-            pass
+        # Treat bool values specially using getboolean (allows for 1, yes, true)
+        for k in [k for k, v in config_dict.iteritems() if isinstance(v, bool)]
+            try:
+                state[k] = config.getboolean(args.run_section, k)
+            except:
+                pass
 
         if args.config_file:
             cmd_line_config_dict = dict(cmd_line_config.items(args.run_section))
@@ -202,15 +196,12 @@ def main(argv=None):
                     state[k] = cmd_line_config_dict[k]
                 except:
                     pass
-            # Treat is_token and verbose specially since they are boolean
-            try:
-                state['verbose'] = cmd_line_config.getboolean(args.run_section, verbose)
-            except:
-                pass
-            try:
-                state['is_token'] = cmd_line_config.getboolean(args.run_section, is_token)
-            except:
-                pass
+            # Treat bool values specially using getboolean (allows for 1, yes, true)
+            for k in [k for k, v in cmd_line_config_dict.iteritems() if isinstance(v, bool)]
+                try:
+                    state[k] = cmd_line_config.getboolean(args.run_section, k)
+                except:
+                    pass
 
     if state['entries'] or state['forums'] or state['list_zdf']:
         from zendesk import Zendesk
