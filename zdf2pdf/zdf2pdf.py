@@ -117,7 +117,7 @@ def main(argv=None):
     argp.add_argument('-s', action='store', dest='style_file',
         help='Style file (CSS) to <link>')
     argp.add_argument('-o', action='store', dest='output_file',
-        help='Output filename (default: PCLOADLETTER.PDF)',
+        help='Output filename (default: PCLOADLETTER.pdf)',
         default=state['output_file'])
     argp.add_argument('-t', action='store', dest='title',
         help='Title to be added to the beginning of the PDF')
