@@ -123,9 +123,11 @@ def main(argv=None):
         help='Title to be added to the beginning of the PDF')
 
     argp.add_argument('-w', action='store', dest='work_dir',
-        help='Working directory in which to stores JSON and images (default: temp dir)')
+        help="""Working directory in which to store JSON output and images
+        (default: temp dir)""")
     argp.add_argument('-d', '--delete', action='store_true', dest='delete',
-        help='Delete working directory at program exit')
+        help="""Delete working directory at program exit
+        (default: do not delete)""")
 
     argp.add_argument('-u', action='store', dest='url',
         help='URL of Zendesk (e.g. https://example.zendesk.com)')
