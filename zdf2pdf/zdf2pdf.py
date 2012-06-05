@@ -167,7 +167,7 @@ def main(argv=None):
             except:
                 pass
         # Treat bool values specially using getboolean (allows for 1, yes, true)
-        for k in [k for k, v in cmd_line_config_dict.iteritems() if isinstance(v, bool)]
+        for k in [k for k, v in cmd_line_config_dict.iteritems() if isinstance(v, bool)]:
             try:
                 state[k] = cmd_line_config.getboolean('zdf2pdf', k)
             except:
@@ -183,7 +183,7 @@ def main(argv=None):
             except:
                 pass
         # Treat bool values specially using getboolean (allows for 1, yes, true)
-        for k in [k for k, v in config_dict.iteritems() if isinstance(v, bool)]
+        for k in [k for k, v in config_dict.iteritems() if isinstance(v, bool)]:
             try:
                 state[k] = config.getboolean(args.run_section, k)
             except:
@@ -197,7 +197,7 @@ def main(argv=None):
                 except:
                     pass
             # Treat bool values specially using getboolean (allows for 1, yes, true)
-            for k in [k for k, v in cmd_line_config_dict.iteritems() if isinstance(v, bool)]
+            for k in [k for k, v in cmd_line_config_dict.iteritems() if isinstance(v, bool)]:
                 try:
                     state[k] = cmd_line_config.getboolean(args.run_section, k)
                 except:
