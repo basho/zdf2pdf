@@ -88,7 +88,7 @@ def config_state(config_file, section, state):
             pass
 
     # update the state with the section dict
-    state.update(cmd_line_config_dict)
+    state.update(config_dict)
 
 def main(argv=None):
     import os, sys, tempfile, argparse
@@ -172,13 +172,17 @@ def main(argv=None):
         help='Is token? Specify if password supplied a Zendesk token')
 
     # Set argparse defaults with program defaults.
-    # Skip password and list_zdf as they are const, not default
+    # Skip password and list_zdf as they are argparse const, not argparse default
     argp.set_defaults(**dict((k, v) for k, v in state.iteritems() if k is not 'password' and k is not 'list_zdf'))
 
     # Read ~/.zdf2pdf.cfg [zdf2pdf] section and update argparse defaults
     try:
         config_state(os.path.expanduser('~') + '/.zdf2pdf.cfg', 'zdf2pdf', state)
-        argp.set_defaults(**dict((k, v) for k, v in state.iteritems() if k is not 'password' and k is not 'list_zdf'))
+        # Skip list_zdf because it is not a config file value, not an argparse
+        # const value, and we don't want to lose it by overwriting it with None.
+        # Password is OK now, because we either have one from the config file or
+        # it is still None.
+        argp.set_defaults(**dict((k, v) for k, v in state.iteritems() if k is not 'list_zdf'))
     except ConfigParser.NoSectionError:
         # -c CONFIG_FILE did not have a [zdf2pdf] section. Skip it.
         pass
@@ -217,10 +221,12 @@ def main(argv=None):
                 section_found = True
             except configparser.NoSectionError:
                 # CONFIG_FILE did not have this section.
-                # If the section wasn't found, print an error and exit
-                if not section_found:
-                    print('Error: Run section {} was not found'.format(args.run_section))
-                    return 1
+                pass
+
+        # If the section wasn't found, print an error and exit
+        if not section_found:
+            print('Error: Run section {} was not found'.format(args.run_section))
+            return 1
 
     if state['entries'] or state['forums'] or state['list_zdf']:
         from zendesk import Zendesk
