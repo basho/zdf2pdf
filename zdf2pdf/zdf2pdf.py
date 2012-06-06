@@ -23,6 +23,10 @@ def zdf2pdf(entries, opts):
     except ImportError:
         import StringIO as SIO
 
+    # Save the current directory so we can go back once done
+    startdir = os.getcwd()
+
+    # Make the output file an absolute path so we can chdir
     opts['output_file'] = os.path.abspath(opts['output_file'])
 
     # Check for, create, and change to working directory
@@ -80,6 +84,8 @@ def zdf2pdf(entries, opts):
 
     if pdf.warn:
         print "*** %d WARNINGS OCCURED" % pdf.warn
+
+    os.chdir(startdir)
 
 def config_state(config_file, section, state):
     """
