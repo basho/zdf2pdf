@@ -8,28 +8,46 @@ https://help.basho.com/entries/21469982-archiving-zendesk-based-documentation
 
 Example <forum_id> for reading from help.basho.com: 20767107
 """
+import os
 try:
     import simplejson as json
 except:
     import json
 
-def zdf2pdf(entries, filename, title=None, style=None):
+def zdf2pdf(entries, opts):
     from bs4 import BeautifulSoup
+    import urllib, urlparse
     import xhtml2pdf.pisa as pisa
     try:
         import cStringIO as SIO
     except ImportError:
         import StringIO as SIO
 
+    opts['output_file'] = os.path.abspath(opts['output_file'])
+
+    # Check for, create, and change to working directory
+    if not os.path.isdir(opts['work_dir']):
+        os.makedirs(opts['work_dir'])
+    os.chdir(opts['work_dir'])
+
+    # Check for and create a directory for attachments and images
+    if not os.path.isdir('attach'):
+        os.makedirs('attach')
+
+    # Save entries
+    with open('entries.json', "w") as outfile:
+        outfile.write(json.dumps(entries))
+
     data = '<head>'
 
-    if style:
-        data += '<link rel="stylesheet" type="text/css" href="{}" />'.format(style)
+    if opts['style_file']:
+        data += """<link rel="stylesheet" type="text/css"
+                   href="{}" />""".format(opts['style_file'])
 
     data += '</head>'
 
-    if title:
-        data += '<h1>' + title + '</h1>'
+    if opts['title']:
+        data += '<h1>' + opts['title'] + '</h1>'
 
     for entry in entries:
         data += '<h1>' + entry['title'] + '</h1>'
@@ -37,17 +55,22 @@ def zdf2pdf(entries, filename, title=None, style=None):
 
     soup = BeautifulSoup(data)
     for img in soup.find_all('img'):
-        src = img.attrs['src']
-        srcfile = src.replace('/', '_')
-        # see if we already have this image
-        #os.path.isfile(
-        if src[0:4] != 'http':
-            pass
-            # append base url to relative srcs
+        # Handle relative and absolute img src
+        src = urlparse.urljoin(opts['url'], img['src'])
+
+        # Normalize the local filename
+        srcfile = os.path.join('attach', src.replace('/', '_'))
+
+        # Get this image if not already present
+        if not os.path.isfile(srcfile):
+            urllib.urlretrieve(src, srcfile)
+
+        # Update the tag for the relative filepath
+        img['src'] = srcfile
 
     pdf = pisa.CreatePDF(
         SIO.StringIO(soup.prettify().encode('utf-8')),
-        file(filename, "wb"),
+        file(opts['output_file'], "wb"),
         encoding = 'utf-8'
     )
 
@@ -91,7 +114,7 @@ def config_state(config_file, section, state):
     state.update(config_dict)
 
 def main(argv=None):
-    import os, sys, tempfile, argparse
+    import sys, tempfile, argparse
     import ConfigParser
 
     # Log to stdout
@@ -271,7 +294,6 @@ def main(argv=None):
             print(str(entry['id']) + ' ' + entry['title'])
         return 0
 
-
     # Use an entries file on disk
     if state['json_file']:
         # Get the entries off disk
@@ -305,7 +327,11 @@ def main(argv=None):
         print("Error: Did not receive any entries.")
         return 1
 
-    zdf2pdf(entries=entries, filename=state['output_file'],
-            title=state['title'], style=state['style_file'])
+    zdf2pdf(entries, state)
+
+    if state['delete']:
+        import shutil
+        shutil.rmtree(state['work_dir'])
+
     return 0
 
