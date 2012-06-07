@@ -8,7 +8,7 @@ https://help.basho.com/entries/21469982-archiving-zendesk-based-documentation
 
 Example <forum_id> for reading from help.basho.com: 20767107
 """
-import os
+import os, shutil
 try:
     import simplejson as json
 except:
@@ -26,27 +26,26 @@ def zdf2pdf(entries, opts):
     # Save the current directory so we can go back once done
     startdir = os.getcwd()
 
-    # Make the output file an absolute path so we can chdir
-    opts['output_file'] = os.path.abspath(opts['output_file'])
-
-    # Check for, create, and change to working directory
-    if not os.path.isdir(opts['work_dir']):
-        os.makedirs(opts['work_dir'])
-    os.chdir(opts['work_dir'])
-
-    # Check for and create a directory for attachments and images
-    if not os.path.isdir('attach'):
-        os.makedirs('attach')
-
-    # Save entries
-    with open('entries.json', "w") as outfile:
-        outfile.write(json.dumps(entries))
-
+    # Start the xhtml to be converted
     data = '<head>'
 
+    # Normalize all of the given paths to absolute paths
+    opts['output_file'] = os.path.abspath(opts['output_file'])
+    opts['work_dir'] = os.path.abspath(opts['work_dir'])
+    attach_dir = os.path.join(opts['work_dir'], 'attach')
+
+    # Check for and create working directory
+    if not os.path.isdir(opts['work_dir']):
+        os.makedirs(opts['work_dir'])
+
+    # Check for and create a directory for attachments and images
+    if not os.path.isdir(attach_dir):
+        os.makedirs(attach_dir)
+
     if opts['style_file']:
+        shutil.copy(opts['style_file'], opts['work_dir'])
         data += """<link rel="stylesheet" type="text/css"
-                   href="{}" />""".format(opts['style_file'])
+                   href="{}" />""".format(os.path.basename(opts['style_file']))
 
     data += '</head>'
 
@@ -57,13 +56,20 @@ def zdf2pdf(entries, opts):
         data += '<h1>' + entry['title'] + '</h1>'
         data += entry['body']
 
+    # Change to working directory to begin file output
+    os.chdir(opts['work_dir'])
+
+    # Save entries
+    with open('entries.json', "w") as outfile:
+        outfile.write(json.dumps(entries))
+
     soup = BeautifulSoup(data)
     for img in soup.find_all('img'):
         # Handle relative and absolute img src
         src = urlparse.urljoin(opts['url'], img['src'])
 
         # Normalize the local filename
-        srcfile = os.path.join('attach', src.replace('/', '_'))
+        srcfile = os.path.join(attach_dir, src.replace('/', '_'))
 
         # Get this image if not already present
         if not os.path.isfile(srcfile):
@@ -72,8 +78,14 @@ def zdf2pdf(entries, opts):
         # Update the tag for the relative filepath
         img['src'] = srcfile
 
+    html = soup.prettify().encode('utf-8')
+
+    # Save generated html
+    with open('entries.html', "w") as outfile:
+        outfile.write(html)
+
     pdf = pisa.CreatePDF(
-        SIO.StringIO(soup.prettify().encode('utf-8')),
+        SIO.StringIO(html),
         file(opts['output_file'], "wb"),
         encoding = 'utf-8'
     )
@@ -336,7 +348,6 @@ def main(argv=None):
     zdf2pdf(entries, state)
 
     if state['delete']:
-        import shutil
         shutil.rmtree(state['work_dir'])
 
     return 0
