@@ -78,7 +78,7 @@ def zdf2pdf(entries, opts):
         # Update the tag for the relative filepath
         img['src'] = srcfile
 
-    html = unicode(soup).encode('utf-8')
+    html = soup.encode('utf-8')
 
     # Save generated html
     with open('entries.html', "w") as outfile:
