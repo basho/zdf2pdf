@@ -68,6 +68,9 @@ def zdf2pdf(entries, opts):
     if opts['copyright']:
         data += '<div{}>{}</div>\n'.format(title_class, opts['copyright'])
 
+    if opts['title'] or opts['author'] or opts['date'] or opts['copyright']:
+        data += '<div>\n<pdf:nextpage />\n</div>\n'
+
     if opts['toc']:
         data += '<h2>Table of Contents</h2>\n<ol>\n'
 
@@ -88,7 +91,7 @@ def zdf2pdf(entries, opts):
         entry_body += entry['body'] + '\n'
 
     if opts['toc']:
-        data += '</ol>\n'
+        data += '</ol>\n<div>\n<pdf:nextpage />\n</div>\n'
 
     # Put all of the body after the table of contents
     data += entry_body
