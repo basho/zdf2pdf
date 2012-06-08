@@ -16,6 +16,7 @@ except:
     import json
 
 def zdf2pdf(entries, opts):
+    import re
     from bs4 import BeautifulSoup
     import urllib, urlparse
     import xhtml2pdf.pisa as pisa
@@ -51,21 +52,21 @@ def zdf2pdf(entries, opts):
     data += '</head>\n<body>\n'
 
     if opts['title_class']:
-        title_class = ' class="' + opts['title_class'] + '"'
+        title_class = ' class="{}"'.format(opts['title_class'])
     else:
         title_class = ''
 
     if opts['title']:
-        data += '<h1' + title_class + '>' + opts['title'] + '</h1>\n'
+        data += '<h1{}>{}</h1>\n'.format(title_class, opts['title'])
 
     if opts['author']:
-        data += '<div' + title_class + '>' + opts['author'] + '</div>\n'
+        data += '<div{}>{}</div>\n'.format(title_class, opts['author'])
 
     if opts['date']:
-        data += '<div' + title_class + '>' + opts['date'] + '</div>\n'
+        data += '<div{}>{}</div>\n'.format(title_class, opts['date'])
 
     if opts['copyright']:
-        data += '<div' + title_class + '>' + opts['copyright'] + '</div>\n'
+        data += '<div{}>{}</div>\n'.format(title_class, opts['copyright'])
 
     if opts['toc']:
         data += '<h2>Table of Contents</h2>\n<ol>\n'
@@ -79,10 +80,11 @@ def zdf2pdf(entries, opts):
 
         # Build the table of contents
         if opts['toc']:
-            data += '<li><a href="">' + entry['title'] + '</a></li>\n'
+            data += '<li><a href="#{}">{}</a></li>\n'.format(entry['id'], entry['title'])
         
         # Get the body of the entry
-        entry_body += '<h1>' + entry['title'] + '</h1>\n'
+        entry_body += '<a name="{}"></a><h1>{}</h1>\n'.format(entry['id'], entry['title'])
+        #entry_body += '<a name="' + entry['id'] + '<h1>' + entry['title'] + '</h1>\n'
         entry_body += entry['body'] + '\n'
 
     if opts['toc']:
@@ -98,7 +100,10 @@ def zdf2pdf(entries, opts):
     with open('entries.json', "w") as outfile:
         outfile.write(json.dumps(entries))
 
+    # Make the data a traversable beautifulsoup
     soup = BeautifulSoup(data)
+
+    # Get images and display them inline
     for img in soup.find_all('img'):
         # Handle relative and absolute img src
         src = urlparse.urljoin(opts['url'], img['src'])
@@ -113,9 +118,20 @@ def zdf2pdf(entries, opts):
         # Update the tag for the relative filepath
         img['src'] = srcfile
 
+    # Make relative links to entries and absolute links to entries point to PDF
+    # anchors. e.g.
+    # http://example.zendes.com/entries/21473796-title
+    # /entries/21473796-title
+    # TODO /entries/21473796-title#anchor
+    r = re.compile('(?:' + opts['url'] + ')?/entries/([0-9]*)-.*')
     for a in soup.find_all('a'):
-        # Relative entry link
-        if a['href'][0:8] == '/entries/': 
+        try:
+            m = r.match(a['href'])
+            # modify the link if we have a match and the entry is in the PDF
+            if m and int(m.group(1)) in entry_ids:
+                a['href'] = '#{}'.format(m.group(1))
+        except KeyError:
+            # this a tag doesn't have an href. named anchor only?
             pass
 
     html = soup.encode('utf-8')
@@ -358,7 +374,7 @@ def main(argv=None):
         # List available zendesk forums with their IDs and titles and exit
         forums = zd.list_forums()
         for forum in forums:
-            print(str(forum['id']) + ' ' + forum['name'])
+            print('{} {}'.format(forum['id'], forum['name']))
         return 0
 
     elif state['list_zdf']:
@@ -371,7 +387,7 @@ def main(argv=None):
 
         entries = zd.list_entries(forum_id=state['list_zdf'])
         for entry in entries:
-            print(str(entry['id']) + ' ' + entry['title'])
+            print('{} {}'.format(entry['id'], entry['title']))
         return 0
 
     # Use an entries file on disk
