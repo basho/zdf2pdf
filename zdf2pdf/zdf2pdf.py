@@ -8,6 +8,7 @@ https://help.basho.com/entries/21469982-archiving-zendesk-based-documentation
 
 Example <forum_id> for reading from help.basho.com: 20767107
 """
+from __future__ import unicode_literals
 import os, shutil
 try:
     import simplejson as json
@@ -27,7 +28,7 @@ def zdf2pdf(entries, opts):
     startdir = os.getcwd()
 
     # Start the xhtml to be converted
-    data = '<head>'
+    data = '<head>\n'
 
     # Normalize all of the given paths to absolute paths
     opts['output_file'] = os.path.abspath(opts['output_file'])
@@ -45,16 +46,50 @@ def zdf2pdf(entries, opts):
     if opts['style_file']:
         shutil.copy(opts['style_file'], opts['work_dir'])
         data += """<link rel="stylesheet" type="text/css"
-                   href="{}" />""".format(os.path.basename(opts['style_file']))
+                   href="{}" />\n""".format(os.path.basename(opts['style_file']))
 
-    data += '</head>'
+    data += '</head>\n<body>\n'
+
+    if opts['title_class']:
+        title_class = ' class="' + opts['title_class'] + '"'
+    else:
+        title_class = ''
 
     if opts['title']:
-        data += '<h1>' + opts['title'] + '</h1>'
+        data += '<h1' + title_class + '>' + opts['title'] + '</h1>\n'
 
+    if opts['author']:
+        data += '<div' + title_class + '>' + opts['author'] + '</div>\n'
+
+    if opts['date']:
+        data += '<div' + title_class + '>' + opts['date'] + '</div>\n'
+
+    if opts['copyright']:
+        data += '<div' + title_class + '>' + opts['copyright'] + '</div>\n'
+
+    if opts['toc']:
+        data += '<h2>Table of Contents</h2>\n<ol>\n'
+
+    entry_body = ''
+    entry_ids = []
     for entry in entries:
-        data += '<h1>' + entry['title'] + '</h1>'
-        data += entry['body']
+        # Keep a list of entry IDs that are included in this doc so relative
+        # links can be fixed.
+        entry_ids.append(entry['id'])
+
+        # Build the table of contents
+        if opts['toc']:
+            data += '<li><a href="">' + entry['title'] + '</a></li>\n'
+        
+        # Get the body of the entry
+        entry_body += '<h1>' + entry['title'] + '</h1>\n'
+        entry_body += entry['body'] + '\n'
+
+    if opts['toc']:
+        data += '</ol>\n'
+
+    # Put all of the body after the table of contents
+    data += entry_body
 
     # Change to working directory to begin file output
     os.chdir(opts['work_dir'])
@@ -77,6 +112,11 @@ def zdf2pdf(entries, opts):
 
         # Update the tag for the relative filepath
         img['src'] = srcfile
+
+    for a in soup.find_all('a'):
+        # Relative entry link
+        if a['href'][0:8] == '/entries/': 
+            pass
 
     html = soup.encode('utf-8')
 
@@ -139,6 +179,13 @@ def main(argv=None):
     import logging
     logging.basicConfig()
 
+    # Declare a class for an argparse custom action.
+    # Handles converting ascii input from argparse that may contain unicode
+    # to a real unicode string.
+    class UnicodeStore(argparse.Action):
+        def __call__(self, parser, namespace, values, option_string=None):
+            setattr(namespace, self.dest, values.decode('utf-8'))
+
     # Options precedence:
     # program state defaults, which are overridden by
     # ~/.zdf2pdf.cfg [zdf2pdf] section options, which are overridden by
@@ -159,6 +206,11 @@ def main(argv=None):
         'style_file': None,
         'output_file': 'PCLOADLETTER.pdf',
         'title': None,
+        'title_class': None,
+        'author': None,
+        'date': None,
+        'copyright': None,
+        'toc': True,
         'work_dir': tempfile.gettempdir(),
         'delete': False,
         'url': None,
@@ -172,41 +224,51 @@ def main(argv=None):
     argp.add_argument('-v', '--verbose', action='store_true',
         help='Verbose output')
 
-    argp.add_argument('-j', action='store', dest='json_file',
+    argp.add_argument('-j', action=UnicodeStore, dest='json_file',
         help='Zendesk entries JSON file to convert to PDF')
-    argp.add_argument('-f', action='store', dest='forums',
+    argp.add_argument('-f', action=UnicodeStore, dest='forums',
         help='Comma separated Forum IDs to download and convert to PDF')
-    argp.add_argument('-e', action='store', dest='entries',
+    argp.add_argument('-e', action=UnicodeStore, dest='entries',
         help='Comma separated Entry IDs to download and convert to PDF')
-    argp.add_argument('-r', action='store', dest='run_section',
+    argp.add_argument('-r', action=UnicodeStore, dest='run_section',
         help='Run pre-configured section in configuration file')
-    argp.add_argument('-l', action='store', dest='list_zdf',
+    argp.add_argument('-l', action=UnicodeStore, dest='list_zdf',
         help="""List a forum's entries by ID and title.  If no forum ID is
         supplied, list forums by ID and title""",
         nargs='?', const=state['list_zdf'], metavar='FORUM_TO_LIST')
 
-    argp.add_argument('-c', action='store', dest='config_file',
+    argp.add_argument('-c', action=UnicodeStore, dest='config_file',
         help='Configuration file (overrides ~/.zdf2pdf.cfg)')
-    argp.add_argument('-s', action='store', dest='style_file',
+    argp.add_argument('-s', action=UnicodeStore, dest='style_file',
         help='Style file (CSS) to <link>')
-    argp.add_argument('-o', action='store', dest='output_file',
+    argp.add_argument('-o', action=UnicodeStore, dest='output_file',
         help='Output filename (default: PCLOADLETTER.pdf)',
         default=state['output_file'])
-    argp.add_argument('-t', action='store', dest='title',
+    argp.add_argument('-t', action=UnicodeStore, dest='title',
         help='Title to be added to the beginning of the PDF')
+    argp.add_argument('-a', action=UnicodeStore, dest='author',
+        help='Author line to be added to the beginning of the PDF')
+    argp.add_argument('--date', action=UnicodeStore, dest='date',
+        help='Date line to be added to the beginning of the PDF')
+    argp.add_argument('--copyright', action=UnicodeStore, dest='copyright',
+        help='Copyright line to be added to the beginning of the PDF')
+    argp.add_argument('--title-class', action=UnicodeStore, dest='title_class',
+        help='CSS class to be added to title page elements')
+    argp.add_argument('--toc', action='store_true', dest='toc',
+        help="Generate a Table of Contents (default: true)")
 
-    argp.add_argument('-w', action='store', dest='work_dir',
+    argp.add_argument('-w', action=UnicodeStore, dest='work_dir',
         help="""Working directory in which to store JSON output and images
         (default: temp dir)""")
     argp.add_argument('-d', '--delete', action='store_true', dest='delete',
         help="""Delete working directory at program exit
         (default: do not delete)""")
 
-    argp.add_argument('-u', action='store', dest='url',
+    argp.add_argument('-u', action=UnicodeStore, dest='url',
         help='URL of Zendesk (e.g. https://example.zendesk.com)')
-    argp.add_argument('-m', action='store', dest='mail',
+    argp.add_argument('-m', action=UnicodeStore, dest='mail',
         help='E-Mail address for Zendesk login')
-    argp.add_argument('-p', action='store', dest='password',
+    argp.add_argument('-p', action=UnicodeStore, dest='password',
         help='Password for Zendesk login',
         nargs='?', const=state['password'])
     argp.add_argument('-i', '--is-token', action='store_true', dest='is_token',
@@ -214,7 +276,7 @@ def main(argv=None):
 
     # Set argparse defaults with program defaults.
     # Skip password and list_zdf as they are argparse const, not argparse default
-    argp.set_defaults(**dict((k, v) for k, v in state.iteritems() if k is not 'password' and k is not 'list_zdf'))
+    argp.set_defaults(**dict((k, v) for k, v in state.iteritems() if k != 'password' and k != 'list_zdf'))
 
     # Read ~/.zdf2pdf.cfg [zdf2pdf] section and update argparse defaults
     try:
@@ -223,7 +285,7 @@ def main(argv=None):
         # const value, and we don't want to lose it by overwriting it with None.
         # Password is OK now, because we either have one from the config file or
         # it is still None.
-        argp.set_defaults(**dict((k, v) for k, v in state.iteritems() if k is not 'list_zdf'))
+        argp.set_defaults(**dict((k, v) for k, v in state.iteritems() if k != 'list_zdf'))
     except ConfigParser.NoSectionError:
         # -c CONFIG_FILE did not have a [zdf2pdf] section. Skip it.
         pass
