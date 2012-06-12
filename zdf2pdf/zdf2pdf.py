@@ -9,14 +9,13 @@ https://help.basho.com/entries/21469982-archiving-zendesk-based-documentation
 Example <forum_id> for reading from help.basho.com: 20767107
 """
 from __future__ import unicode_literals
-import os, shutil, textwrap
+import os, shutil, re, textwrap
 try:
     import simplejson as json
 except:
     import json
 
 def zdf2pdf(entries, opts):
-    import re
     from bs4 import BeautifulSoup
     import urllib, urlparse
     import xhtml2pdf.pisa as pisa
@@ -156,6 +155,9 @@ def zdf2pdf(entries, opts):
             # this a tag doesn't have an href. named anchor only?
             pass
 
+    if opts['strip_empty']:
+        soup = strip_empty_tags(soup)
+
     html = soup.encode('utf-8')
 
     # Save generated html
@@ -176,6 +178,15 @@ def zdf2pdf(entries, opts):
         print "*** %d WARNINGS OCCURED" % pdf.warn
 
     os.chdir(startdir)
+
+def strip_empty_tags(soup):
+    emptymatches = re.compile('^(&nbsp;|\s|\n|\r|\t)*$')
+    emptytags = soup.findAll(lambda tag: tag.find(True) is None and (tag.string is None or tag.string.strip()=="" or tag.string.strip()==emptymatches) and not tag.isSelfClosing and tag.name[0:3] != 'pdf')
+    if emptytags and (len(emptytags) != 0):
+        for t in emptytags: t.extract()
+        #recursive in case removing empty tag creates new empty tag
+        strip_empty_tags(soup)
+    return soup
 
 def config_state(config_file, section, state):
     """
@@ -248,8 +259,9 @@ def main(argv=None):
         'author': None,
         'date': None,
         'copyright': None,
-        'toc': True,
+        'toc': False,
         'pre_width': None,
+        'strip_empty': False,
         'work_dir': tempfile.gettempdir(),
         'delete': False,
         'url': None,
@@ -294,9 +306,11 @@ def main(argv=None):
     argp.add_argument('--title-class', action=UnicodeStore, dest='title_class',
         help='CSS class to be added to title page elements')
     argp.add_argument('--toc', action='store_true', dest='toc',
-        help="Generate a Table of Contents (default: true)")
+        help="Generate a Table of Contents (default: false)")
     argp.add_argument('--pre-width', action='store', dest='pre_width', type=int,
         help='Width to wrap contents of <pre></pre> tags.')
+    argp.add_argument('--strip-empty', action='store_true', dest='strip_empty',
+        help='Strip empty tags. (default: false)')
 
     argp.add_argument('-w', action=UnicodeStore, dest='work_dir',
         help="""Working directory in which to store JSON output and images
