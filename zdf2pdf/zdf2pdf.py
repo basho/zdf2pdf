@@ -9,7 +9,7 @@ https://help.basho.com/entries/21469982-archiving-zendesk-based-documentation
 Example <forum_id> for reading from help.basho.com: 20767107
 """
 from __future__ import unicode_literals
-import os, shutil
+import os, shutil, textwrap
 try:
     import simplejson as json
 except:
@@ -105,6 +105,25 @@ def zdf2pdf(entries, opts):
 
     # Make the data a traversable beautifulsoup
     soup = BeautifulSoup(data)
+
+    if opts['pre_width']:
+        # Monkey patch TextWrapper for splitting on any whitespace and add
+        # splitting on commas. Save the old one for when we're done.
+        old_wordsep_simple_re = textwrap.TextWrapper.wordsep_simple_re
+        new_wordsep_simple_re = re.compile(r'(\s+|\,)')
+        textwrap.TextWrapper.wordsep_simple_re = new_wordsep_simple_re
+
+        w = textwrap.TextWrapper(width=opts['pre_width'],
+                replace_whitespace=False, drop_whitespace=False,
+                break_on_hyphens=False, break_long_words=True)
+        pre_str = ''
+        for pre in soup.find_all('pre'):
+            for line in pre.string.splitlines():
+                pre_str += '\n'.join(w.wrap(line)) + '\n'
+            pre.string = pre_str
+
+        # Put the original wordsep_simple_re back
+        textwrap.TextWrapper.wordsep_simple_re = old_wordsep_simple_re
 
     # Get images and display them inline
     for img in soup.find_all('img'):
@@ -230,6 +249,7 @@ def main(argv=None):
         'date': None,
         'copyright': None,
         'toc': True,
+        'pre_width': None,
         'work_dir': tempfile.gettempdir(),
         'delete': False,
         'url': None,
@@ -275,6 +295,8 @@ def main(argv=None):
         help='CSS class to be added to title page elements')
     argp.add_argument('--toc', action='store_true', dest='toc',
         help="Generate a Table of Contents (default: true)")
+    argp.add_argument('--pre-width', action='store', dest='pre_width', type=int,
+        help='Width to wrap contents of <pre></pre> tags.')
 
     argp.add_argument('-w', action=UnicodeStore, dest='work_dir',
         help="""Working directory in which to store JSON output and images
@@ -358,8 +380,7 @@ def main(argv=None):
                         zendesk_password = state['password'],
                         use_api_token = state['is_token'])
         else:
-            from textwrap import dedent
-            msg = dedent("""\
+            msg = textwrap.dedent("""\
                 Error: Need Zendesk config for requested operation. Use -u, -m,
                        -p options or a config file to provide the information.
 
