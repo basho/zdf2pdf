@@ -16,35 +16,35 @@ Here are the essential steps for a basic documentation archiving run:
 1. One time set up of Zendesk user API token.
 2. Get zdf2pdf: https://github.com/basho/zdf2pdf
 3. One time set up of Python virtualenv work environment and dependencies.
-4. Run `zdf2pdf` for the documentation set(s) you wish to archive.
+4. Run `zdf2pdf` for the documentation set(s) to archive.
 5. Create a new entry in the Archived Documentation section of
 Zendesk Documentation at https://help.basho.com.
-6. Add your generated archive PDF to the entry with any additional notes, etc.
+6. Add generated archive PDF to the entry with any additional notes, etc.
 
 The details for each step above will be presented in the following sections.
 
 ## Zendesk API Token Setup
 
-To use zdf2pdf as shown in the **zdf2pdf Utility** section, you
-must first generate a Zendesk API token for your account. This token helps
-you to avoid disclosing your Zendesk user account password, and it can be
+Prior to using zdf2pdf, a Zendesk API token must be generated for the
+account that will be used for archiving documentation. This token helps
+avoid disclosing the Zendesk user account password, and it can be
 regenerated or disabled altogether at any time.
 
 To create a Zendesk API token for use with zdversion, follow these steps:
 
-1. Log into your Zendesk user account at this URL: https://help.basho.com/
+1. Log into the Basho Zendesk at this URL: https://help.basho.com/
 2. Navigate to this URL: https://help.basho.com/settings/api/
 3. Click the **Enabled** checkbox inside the **Token Access** section.
 4. Make note of the 40 character string after *Your API token is:*
 5. Click Save.
 
-**NOTE**: If you have problems with step #3 above, you might need to ask
-someone  with appropriate Zendesk-fu to provide you with the
-necessary permissions.
+**NOTE**: If problems occur with step #3 above, the account used to access
+Zendesk could lack the necessary permissions to work with an API token. In
+this case, appropriate permissions should be requested from a Basho Zendesk
+administrator.
 
-Once your Zendesk API token is configured, and you've made note of it,
-proceed to configuring a Python virtual environment on the system with which
-you plan to archive documentation.
+Once the Zendesk API token is configured, and noted, proceed to configuring
+a Python virtual environment.
 
 ## Virtual Environment Setup
 
@@ -94,8 +94,8 @@ Finally, install zdf2pdf itself:
     ln -s <path_to_code>/zdf2pdf/bin/zdf2pdf
     cd $VIRTUAL_ENV
 
-Change `<path_to_code>` in the above example to the path where your zdf2pdf
-source code is kept.
+Change `<path_to_code>` in the above example to the path where the zdf2pdf
+source code is located.
 
 More detailed information for installation and configuring virtualenv for
 specific environments is available from the
@@ -103,33 +103,73 @@ specific environments is available from the
 
 ## zdf2pdf Utility
 
-zdf2pdf is the Python script for creating documentation snapshots. Once you
-have configured it for use with your Zendesk account, you can use it to
-archive documentation.
+zdf2pdf is the Python script for creating documentation snapshots. Once it
+is configured for use with a Zendesk account, it can be used to generate
+documentation archives.
 
 ### Configuration
 
-Before using zdf2pdf, you must configure some basics, such as the target
-Zendesk URL, your account name, and your API token. These values are stored
-in the file `~/.zdf2pdf.cfg`, and the expected format of the file
-is shown in this example:
+Before using zdf2pdf, some basic configuration should be set, such as the
+target Zendesk URL, account name to use, and associated API token. These
+values are stored in the `~/.zdf2pdf.cfg` file, and the expected format of
+the file is shown in this example:
 
     [zdf2pdf]
     email = you@example.com
     token = dneib393fwEF3ifbsEXAMPLEdhb93dw343
     url = https://example.zendesk.com
 
-Once you have created a `~/.zdf2pdf.cfg` file with values specific to
-your installation, you can proceed to using zdf2pdf.
+Once a `~/.zdf2pdf.cfg` file with values specific to the installation has
+been created, proceed to using zdf2pdf.
 
 ### Usage
 
 The script can be invoked with the following synopsis:
 
-    zdf2pdf [-h] [-c CONFIG_FILE] [-f ENTRIES_FILE | -i FORUM_ID | -l]
-                   [-k KEEP_FILE] [-o PDF_FILE] [-t PDF_TITLE] [-v]
+    zdf2pdf [-h] [-v] [-j JSON_FILE] [-f FORUMS] [-e ENTRIES]
+            [-r RUN_SECTION] [-l [FORUM_TO_LIST]] [-c CONFIG_FILE]
+            [-s STYLE_FILE] [-o OUTPUT_FILE] [-t TITLE] [-a AUTHOR]
+            [--date DATE] [--copyright COPYRIGHT]
+            [--title-class TITLE_CLASS] [--toc] [-w WORK_DIR] [-d] [-u URL]
+            [-m MAIL] [-p [PASSWORD]] [-i]
 
-Here are some basic usage examples:
+The optional arguments taken by zdf2pdf:
+
+    -h, --help            show this help message and exit
+    -v, --verbose         Verbose output
+    -j JSON_FILE          Zendesk entries JSON file to convert to PDF
+    -f FORUMS             Comma separated Forum IDs to download and convert
+                          to PDF
+    -e ENTRIES            Comma separated Entry IDs to download and convert
+                          to PDF
+    -r RUN_SECTION        Run pre-configured section in configuration file
+    -l [FORUM_TO_LIST]    List a forum's entries by ID and title. If no
+                          forum ID is supplied, list forums by ID and title
+    -c CONFIG_FILE        Configuration file (overrides ~/.zdf2pdf.cfg)
+    -s STYLE_FILE         Style file (CSS) to <link>
+    -o OUTPUT_FILE        Output filename (default: PCLOADLETTER.pdf)
+    -t TITLE              Title to be added to the beginning of the PDF
+    -a AUTHOR             Author line to be added to the beginning of the PDF
+    --date DATE           Date line to be added to the beginning of the PDF
+    --copyright COPYRIGHT
+                          Copyright line to be added to the beginning of PDF
+    --title-class TITLE_CLASS
+                          CSS class to be added to title page elements
+    --toc                 Generate a Table of Contents (default: true)
+    -w WORK_DIR           Working directory in which to store JSON output
+                          and images (default: temp dir)
+    -d, --delete          Delete working directory at program exit
+                          (default: do not delete)
+    -u URL                URL of Zendesk (e.g. https://example.zendesk.com)
+    -m MAIL               E-Mail address for Zendesk login
+    -p [PASSWORD]         Password for Zendesk login
+    -i, --is-token        Specify supplied password is a Zendesk token
+
+Here are some basic zdf2pdf usage examples to get started:
+
+#### Help
+
+    zdf2pdf -h
 
 #### Listing forums
 
