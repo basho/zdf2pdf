@@ -1,12 +1,5 @@
 """
-zdf2pdf: Create version specific documentation archives from Zendesk
-product documentation at https://help.basho.com
-
-See the following URL for documentation on usage & process:
-
-https://help.basho.com/entries/21469982-archiving-zendesk-based-documentation
-
-Example <forum_id> for reading from help.basho.com: 20767107
+zdf2pdf: Create PDFs from Zendesk forums and entries
 """
 from __future__ import unicode_literals
 import os, shutil, re, textwrap

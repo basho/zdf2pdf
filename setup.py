@@ -22,6 +22,9 @@ setup(name="zdf2pdf",
       include_package_data=True,
       zip_safe=False,
       requires=["xhtml2pdf",
+        "beautifulsoup4",
+        "httplib2",
+        "simplejson",
         "zendesk",
       ]
 )
