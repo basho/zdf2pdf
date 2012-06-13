@@ -115,8 +115,8 @@ def zdf2pdf(entries, opts):
         w = textwrap.TextWrapper(width=opts['pre_width'],
                 replace_whitespace=False, drop_whitespace=False,
                 break_on_hyphens=False, break_long_words=True)
-        pre_str = ''
         for pre in soup.find_all('pre'):
+            pre_str = ''
             for line in pre.string.splitlines():
                 pre_str += '\n'.join(w.wrap(line)) + '\n'
             pre.string = pre_str
