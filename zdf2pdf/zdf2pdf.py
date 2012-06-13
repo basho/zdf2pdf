@@ -43,28 +43,43 @@ def zdf2pdf(entries, opts):
 
     data += '</head>\n<body>\n'
 
-    if opts['title_class']:
-        title_class = ' class="{}"'.format(opts['title_class'])
-    else:
-        title_class = ''
+    # Add PDF header if given
+    if opts['header']:
+        data += opts['header'] + '\n'
 
-    if opts['title']:
-        data += '<h1{}>{}</h1>\n'.format(title_class, opts['title'])
+    if opts['footer']:
+        data += opts['footer'] + '\n'
 
-    if opts['author']:
-        data += '<div{}>{}</div>\n'.format(title_class, opts['author'])
-
-    if opts['date']:
-        data += '<div{}>{}</div>\n'.format(title_class, opts['date'])
-
-    if opts['copyright']:
-        data += '<div{}>{}</div>\n'.format(title_class, opts['copyright'])
-
+    # Build anything provided that should go on the title page
     if opts['title'] or opts['author'] or opts['date'] or opts['copyright']:
-        data += '<div>\n<pdf:nextpage />\n</div>\n'
+        if opts['title_class']:
+            title_class = ' class="{}"'.format(opts['title_class'])
+        else:
+            title_class = ''
+
+        data += '<div{}>\n'.format(title_class)
+
+        if opts['title']:
+            data += '<h1>{}</h1>\n'.format(opts['title'])
+
+        if opts['author']:
+            data += '<div>{}</div>\n'.format(opts['author'])
+
+        if opts['date']:
+            data += '<div>{}</div>\n'.format(opts['date'])
+
+        if opts['copyright']:
+            data += '<div>{}</div>\n'.format(opts['copyright'])
+
+        data += '</div>\n'
 
     if opts['toc']:
-        data += '<h2>Table of Contents</h2>\n<ol>\n'
+        if opts['toc_class']:
+            toc_class = ' class="{}"'.format(opts['toc_class'])
+        else:
+            toc_class = ''
+
+        data += '<div{}>\n<h2>{}</h2>\n<ol>\n'.format(toc_class, opts['toc_title'])
 
     entry_body = ''
     entry_ids = []
@@ -83,7 +98,7 @@ def zdf2pdf(entries, opts):
         entry_body += entry['body'] + '\n'
 
     if opts['toc']:
-        data += '</ol>\n<div>\n<pdf:nextpage />\n</div>\n'
+        data += '</ol>\n</div>\n'
 
     # Put all of the body after the table of contents
     data += entry_body
@@ -173,8 +188,13 @@ def zdf2pdf(entries, opts):
     os.chdir(startdir)
 
 def strip_empty_tags(soup):
+    """
+    Strip out tags that do not have any contents. Intended to clean up HTML
+    produced by editors. Does not remove self closing tags, empty anchor link
+    tags, or xhtml2pdf specific tags.
+    """
     emptymatches = re.compile('^(&nbsp;|\s|\n|\r|\t)*$')
-    emptytags = soup.findAll(lambda tag: tag.find(True) is None and (tag.string is None or tag.string.strip()=="" or tag.string.strip()==emptymatches) and not tag.isSelfClosing and tag.name[0:3] != 'pdf')
+    emptytags = soup.findAll(lambda tag: tag.find(True) is None and (tag.string is None or tag.string.strip()=="" or tag.string.strip()==emptymatches) and not tag.isSelfClosing and not (tag.name=='a' and tag.name) and tag.name[0:3] != 'pdf')
     if emptytags and (len(emptytags) != 0):
         for t in emptytags: t.extract()
         #recursive in case removing empty tag creates new empty tag
@@ -253,8 +273,12 @@ def main(argv=None):
         'date': None,
         'copyright': None,
         'toc': False,
+        'toc_class': None,
+        'toc_title': 'Table of Contents',
         'pre_width': None,
         'strip_empty': False,
+        'header': None,
+        'footer': None,
         'work_dir': tempfile.gettempdir(),
         'delete': False,
         'url': None,
@@ -288,6 +312,7 @@ def main(argv=None):
     argp.add_argument('-o', action=UnicodeStore, dest='output_file',
         help='Output filename (default: PCLOADLETTER.pdf)',
         default=state['output_file'])
+
     argp.add_argument('-t', action=UnicodeStore, dest='title',
         help='Title to be added to the beginning of the PDF')
     argp.add_argument('-a', action=UnicodeStore, dest='author',
@@ -297,13 +322,21 @@ def main(argv=None):
     argp.add_argument('--copyright', action=UnicodeStore, dest='copyright',
         help='Copyright line to be added to the beginning of the PDF')
     argp.add_argument('--title-class', action=UnicodeStore, dest='title_class',
-        help='CSS class to be added to title page elements')
+        help='CSS class to be added to title page div')
     argp.add_argument('--toc', action='store_true', dest='toc',
         help="Generate a Table of Contents (default: false)")
+    argp.add_argument('--toc-title', action=UnicodeStore, dest='toc_title',
+        help="ToC title (default: Table of Contents)")
+    argp.add_argument('--toc-class', action=UnicodeStore, dest='toc_class',
+        help='CSS class to be added to ToC div')
     argp.add_argument('--pre-width', action='store', dest='pre_width', type=int,
         help='Width to wrap contents of <pre></pre> tags.')
     argp.add_argument('--strip-empty', action='store_true', dest='strip_empty',
         help='Strip empty tags. (default: false)')
+    argp.add_argument('--header', action=UnicodeStore, dest='header',
+        help='HTML header to add to the PDF (see docs)')
+    argp.add_argument('--footer', action=UnicodeStore, dest='footer',
+        help='HTML footer to add to the PDF (see docs)')
 
     argp.add_argument('-w', action=UnicodeStore, dest='work_dir',
         help="""Working directory in which to store JSON output and images
