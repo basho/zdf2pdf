@@ -125,9 +125,13 @@ def zdf2pdf(entries, opts):
                 break_on_hyphens=False, break_long_words=True)
         for pre in soup.find_all('pre'):
             pre_str = ''
-            for line in pre.string.splitlines():
-                pre_str += '\n'.join(w.wrap(line)) + '\n'
-            pre.string = pre_str
+            try:
+                for line in pre.string.splitlines():
+                    pre_str += '\n'.join(w.wrap(line)) + '\n'
+                pre.string = pre_str
+            except AttributeError:
+                # pre tag has no content
+                pass
 
         # Put the original wordsep_simple_re back
         textwrap.TextWrapper.wordsep_simple_re = old_wordsep_simple_re
@@ -225,10 +229,14 @@ def config_state(config_file, section, state):
     # Treat bool values specially using getboolean (allows for 1, yes, true)
     for k in state_bools:
         try:
-            config_dict[k] = config.getboolean('zdf2pdf', k)
+            config_dict[k] = config.getboolean(section, k)
         except ConfigParser.NoOptionError:
             # This config file did not contain this option. Skip it.
             pass
+
+    # Convert any new strings to full unicode
+    for k in [k for k, v in config_dict.iteritems() if isinstance(v, str)]:
+        config_dict[k] = config_dict[k].decode('utf-8')
 
     # update the state with the section dict
     state.update(config_dict)
@@ -329,7 +337,7 @@ def main(argv=None):
         help="ToC title (default: Table of Contents)")
     argp.add_argument('--toc-class', action=UnicodeStore, dest='toc_class',
         help='CSS class to be added to ToC div')
-    argp.add_argument('--pre-width', action='store', dest='pre_width', type=int,
+    argp.add_argument('--pre-width', action=UnicodeStore, dest='pre_width',
         help='Width to wrap contents of <pre></pre> tags.')
     argp.add_argument('--strip-empty', action='store_true', dest='strip_empty',
         help='Strip empty tags. (default: false)')
@@ -382,6 +390,7 @@ def main(argv=None):
 
     # -c CONFIG_FILE given on command line read args.config_file [zdf2pdf], update state
     if args.config_file:
+        if state['verbose']: print('Reading config file {}'.format(args.config_file))
         try:
             config_state(args.config_file, 'zdf2pdf', state)
         except ConfigParser.NoSectionError:
@@ -390,20 +399,24 @@ def main(argv=None):
 
     # -r RUN_SECTION given
     if args.run_section:
+        if state['verbose']: print('Searching for {} in ~/.zdf2pdf'.format(args.run_section))
         section_found = False
         try:
             config_state(os.path.expanduser('~') + '/.zdf2pdf.cfg', args.run_section, state)
             section_found = True
+            if state['verbose']: print('Found {} in ~/.zdf2pdf'.format(args.run_section))
         except ConfigParser.NoSectionError:
             # ~/.zdf2pdf.cfg did not have this section. Hope it's found later.
             pass
 
         # -c CONFIG_FILE and -r RUN_SECTION given
         if args.config_file:
+            if state['verbose']: print('Searching for {} in {}'.format(args.run_section, args.config_file))
             try:
                 config_state(args.config_file, args.run_section, state)
                 section_found = True
-            except configparser.NoSectionError:
+                if state['verbose']: print('Found {} in {}'.format(args.run_section, args.config_file))
+            except ConfigParser.NoSectionError:
                 # CONFIG_FILE did not have this section.
                 pass
 
@@ -415,6 +428,13 @@ def main(argv=None):
     if state['entries'] or state['forums'] or state['list_zdf']:
         from zendesk import Zendesk
         if state['url'] and state['mail'] and state['password']:
+            if state['verbose']:
+                print('Configuring Zendesk with:'
+                      'url: {}'
+                      'mail: {}'
+                      'password: (hidden)'
+                      'is_token: {}'.format( state['url'], state['mail'],
+                                             repr(state['is_token']) ))
             zd = Zendesk(state['url'],
                         zendesk_username = state['mail'],
                         zendesk_password = state['password'],
@@ -434,14 +454,31 @@ def main(argv=None):
             print(msg)
             return 1
 
+    # All config options are in, state is set.
+    # Handle any last minute type checking or setting
+    if state['pre_width']:
+        try:
+            state['pre_width'] = int(state['pre_width'])
+        except TypeError:
+            print('Could not convert pre_width {} to integer'.format( repr(state['pre_width']) ))
+            return 1
+
+    # Log the state
+    if state['verbose']:
+        print('Running with program state:')
+        for k, v in state.iteritems():
+            print('{} {}'.format(k, repr(v)))
+
     if state['list_zdf'] == 'forums':
         # List available zendesk forums with their IDs and titles and exit
+        if state['verbose']: print('Listing all forums')
         forums = zd.list_forums()
         for forum in forums:
             print('{} {}'.format(forum['id'], forum['name']))
         return 0
 
     elif state['list_zdf']:
+        if state['verbose']: print('Listing all entries in forum {}'.format(state['list_zdf']))
         # List a zendesk forum's entries with their IDs and titles and exit
         try:
             forum_id = int(state['list_zdf'])
@@ -456,6 +493,7 @@ def main(argv=None):
 
     # Use an entries file on disk
     if state['json_file']:
+        if state['verbose']: print('Reading entries from {}'.format(state['json_file']))
         # Get the entries off disk
         with open(state['json_file'], 'r') as infile:
             entries = json.loads(infile.read())
@@ -467,6 +505,8 @@ def main(argv=None):
         try:
             forum_ids = [int(i) for i in state['forums'].split(',')]
             for forum_id in forum_ids:
+                if state['verbose']: 
+                    print('Obtaining entries from forum {}'.format(forum_id))
                 entries += zd.list_entries(forum_id=forum_id)
         except ValueError:
             print('Error: Could not convert to integers: {}'.format(state['forums']))
@@ -477,6 +517,8 @@ def main(argv=None):
         try:
             entry_ids = [int(i) for i in state['entries'].split(',')]
             for entry_id in entry_ids:
+                if state['verbose']: 
+                    print('Obtaining entry {}'.format(forum_id))
                 entries.append(zd.show_entry(entry_id=entry_id))
         except ValueError:
             print('Error: Could not convert to integers: {}'.format(state['entries']))
