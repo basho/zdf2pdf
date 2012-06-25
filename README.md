@@ -73,19 +73,64 @@ a Python virtual environment.
 
 ### Configuration
 
-Before using zdf2pdf, some basic configuration should be set, such as the
-target Zendesk URL, account name to use, and associated API token. These
-values are stored in the `~/.zdf2pdf.cfg` file, and the expected format of
-the file is shown in this example:
+Options when running zdf2pdf can be configured through configuration files. The
+`[zdf2pdf]` section of the file `~/.zdf2pdf.cfg` is always read. Once the
+options from this section are applied, the command line options are applied
+(see next section). If the `-c CONFIG_FILE` option is specified, then the
+`[zdf2pdf]` section from the specified config file is then applied. Also, if
+the `-r RUN_SECTION` option is specified, the `[RUN_SECTION]` from
+`~/.zdf2pdf.cfg` is read and applied. Finally, if both `-c` and `-r` options
+are given, the `[RUN_SECTION]` from `CONFIG_FILE` is applied.
 
+The purpose of offering so many configuration options is to allow individuals
+to set their desired options such as `mail`, `url`, and `password` in their own
+~/.zdf2pdf.cfg, and then groups can share config files that have options set
+such as `forums`, `entries`, `title`, etc. All options are valid in all config
+files and sections. An example of using two config files is given below.
+
+    ; ~/.zdf2pdf.cfg
     [zdf2pdf]
-    email = you@example.com
-    token = dneib393fwEF3ifbsEXAMPLEdhb93dw343
+    mail = you@example.com
+    password = dneib393fwEF3ifbsEXAMPLEdhb93dw343
     url = https://example.zendesk.com
     is_token = 1
 
-Once a `~/.zdf2pdf.cfg` file with values specific to the installation has
-been created, proceed to using zdf2pdf.
+    [MyBook]
+    forums = 20747046, 20877608, 20748808
+  
+
+
+    ; Example complete config file. This is a comment.
+    [tps_report]
+    version = 1.1.2 ; not actually a config option. used for interpolation below
+    ;verbose = 1
+    ;json_file = %(work_dir)s/entries.json
+    forums = 30617246, 10887508, 23728902
+    ;entries = 30162764, 20878085, 32279820
+    style_file = mystyle.css
+    output_file = tps_report-%(version)s.pdf
+    title = TPS REPORT %(version)s
+    author = Peter Gibbons<br/>Bill Lumbergh, Supervisor
+    date = Feb 19 1999
+    copyright = Copyright © 2012 Initech, Inc.
+    title_class = titlePage
+    toc = 1
+    toc_title = Table of Contents
+    toc_class = tableOfContents
+    pre_width = 80
+    strip_empty = 1
+    ;header = <div id="header">Some header HTML</div>
+    footer = <div id="footer">
+      <pdf:pagenumber/>
+      </div>
+      <pdf:nexttemplate name="regular"/>
+    work_dir = my_tps_reports
+    ;delete
+    url = https://example.zendesk.com
+    mail = pgibbons@example.com
+    password = dneib393fwEF3ifbsEXAMPLEdhb93dw343
+    is_token = true
+
 
 ### Usage
 
@@ -223,6 +268,43 @@ file `style.css` located in the present working directory.
  * simplejson
  * xhtml2pdf
  * zendesk (patched for forum support)
+
+### Headers and Footers
+
+The header and footer options are provided for the purpose of doing things like
+page numbers. They provide the capability to inject HTML at the beginning of
+the document which can be styled to suit various purposes. For example, page
+numbers can be achieved by using an option like this in a config file:
+
+    footer = <div id="footer">
+      <pdf:pagenumber/>
+      </div>
+      <pdf:nexttemplate name="regular"/>
+
+And then using CSS such as:
+
+    @page {
+        -pdf-page-orientation: portrait;
+        -pdf-page-size: letter;
+        margin: 2cm;
+    }
+
+    @page regular {
+        -pdf-page-orientation: portrait;
+        -pdf-page-size: letter;
+        margin: 2cm 2cm 3cm 2cm;
+        @frame footer {
+            -pdf-frame-content: footer;
+            bottom: 1.5cm;
+            left: 2cm;
+            right: 2cm;
+            height: .6cm;
+        }
+    }
+
+The above will result in a first page which does not contain a footer, and
+following pages that do contain a footer. The footer will contain the PDF page
+number.
 
 ### Resources
 
