@@ -269,8 +269,9 @@ def main(argv=None):
     state = {
         'verbose': False,
         'json_file': None,
+        'categories': None,
         'forums': None,
-        'entries': None,
+        'topics': None,
         'run_section': None,
         'list_zdf': 'forums',
         'style_file': None,
@@ -300,17 +301,19 @@ def main(argv=None):
     argp.add_argument('-v', '--verbose', action='store_true',
         help='Verbose output')
 
-    argp.add_argument('-j', action=UnicodeStore, dest='json_file',
+    argp.add_argument('--json-file', action=UnicodeStore, dest='json_file',
         help='Zendesk entries JSON file to convert to PDF')
-    argp.add_argument('-f', action=UnicodeStore, dest='forums',
+    argp.add_argument('--categories', action=UnicodeStore, dest='categories',
+        help='Comma separated Category IDs to download and convert to PDF')
+    argp.add_argument('--forums', action=UnicodeStore, dest='forums',
         help='Comma separated Forum IDs to download and convert to PDF')
-    argp.add_argument('-e', action=UnicodeStore, dest='entries',
-        help='Comma separated Entry IDs to download and convert to PDF')
+    argp.add_argument('--topics', action=UnicodeStore, dest='topics',
+        help='Comma separated Topic (Entry) IDs to download and convert to PDF')
     argp.add_argument('-r', action=UnicodeStore, dest='run_section',
         help='Run pre-configured section in configuration file')
     argp.add_argument('-l', action=UnicodeStore, dest='list_zdf',
         help="""List a forum's entries by ID and title.  If no forum ID is
-        supplied, list forums by ID and title""",
+        supplied, list forums by ID and title organized by category""",
         nargs='?', const=state['list_zdf'], metavar='FORUM_TO_LIST')
 
     argp.add_argument('-c', action=UnicodeStore, dest='config_file',
@@ -425,7 +428,7 @@ def main(argv=None):
             print('Error: Run section {} was not found'.format(args.run_section))
             return 1
 
-    if state['entries'] or state['forums'] or state['list_zdf']:
+    if state['categories'] or state['topics'] or state['forums'] or state['list_zdf']:
         from zendesk import Zendesk
         if state['url'] and state['mail'] and state['password']:
             if state['verbose']:
@@ -470,11 +473,19 @@ def main(argv=None):
             print('{} {}'.format(k, repr(v)))
 
     if state['list_zdf'] == 'forums':
-        # List available zendesk forums with their IDs and titles and exit
+        # List available zendesk forums with their IDs and titles and exit.
+        # Listing is formatted like for following:
+        # 12345 Category 1 name
+        #     09876 Forum 1 name
+        #     54321 Forum 2 name
+        # 67890 Category 2 name
         if state['verbose']: print('Listing all forums')
-        forums = zd.list_forums()
-        for forum in forums:
-            print('{} {}'.format(forum['id'], forum['name']))
+        categories = zd.list_categories()
+        for cat in categories['categories']:
+            print('{} {}'.format(cat['id'], cat['name']))
+            forums = zd.list_category_forums(category_id=cat['id'])['forums']
+            for forum in forums:
+                print('    {} {}'.format(forum['id'], forum['name']))
         return 0
 
     elif state['list_zdf']:
@@ -486,8 +497,8 @@ def main(argv=None):
             print('Error: Could not convert to integer: {}'.format(state['list_zdf']))
             return 1
 
-        entries = zd.list_entries(forum_id=state['list_zdf'])
-        for entry in entries:
+        entries = zd.list_topics(forum_id=state['list_zdf'])
+        for entry in entries['topics']:
             print('{} {}'.format(entry['id'], entry['title']))
         return 0
 
@@ -500,6 +511,22 @@ def main(argv=None):
     else:
         entries = []
 
+    # Get the entries from one or more zendesk categories
+    if state['categories']:
+        try:
+            cat_ids = [int(i) for i in state['categories'].split(',')]
+            for cat_id in cat_ids:
+                if state['verbose']: 
+                    print('Obtaining entries from category {}'.format(cat_id))
+                forums = zd.list_category_forums(category_id=cat_id)['forums']
+                for forum in forums:
+                    if state['verbose']: 
+                        print('Obtaining entries from forum {}'.format(forum_id))
+                    entries += zd.list_topics(forum_id=forum['id'])['topics']
+        except ValueError:
+            print('Error: Could not convert to integers: {}'.format(state['forums']))
+            return 1
+
     # Get the entries from one or more zendesk forums
     if state['forums']:
         try:
@@ -507,21 +534,21 @@ def main(argv=None):
             for forum_id in forum_ids:
                 if state['verbose']: 
                     print('Obtaining entries from forum {}'.format(forum_id))
-                entries += zd.list_entries(forum_id=forum_id)
+                entries += zd.list_topics(forum_id=forum_id)['topics']
         except ValueError:
             print('Error: Could not convert to integers: {}'.format(state['forums']))
             return 1
 
     # Get individual entries from zendesk
-    if state['entries']:
+    if state['topics']:
         try:
-            entry_ids = [int(i) for i in state['entries'].split(',')]
-            for entry_id in entry_ids:
+            topic_ids = [int(i) for i in state['topics'].split(',')]
+            for topic_id in topic_ids:
                 if state['verbose']: 
-                    print('Obtaining entry {}'.format(entry_id))
-                entries.append(zd.show_entry(entry_id=entry_id))
+                    print('Obtaining topic {}'.format(topic_id))
+                entries.append(zd.show_topic(topic_id=topic_id)['topic'])
         except ValueError:
-            print('Error: Could not convert to integers: {}'.format(state['entries']))
+            print('Error: Could not convert to integers: {}'.format(state['topics']))
             return 1
 
     if len(entries) == 0:
