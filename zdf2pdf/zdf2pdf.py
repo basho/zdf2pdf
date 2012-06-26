@@ -429,11 +429,11 @@ def main(argv=None):
         from zendesk import Zendesk
         if state['url'] and state['mail'] and state['password']:
             if state['verbose']:
-                print('Configuring Zendesk with:'
-                      'url: {}'
-                      'mail: {}'
-                      'password: (hidden)'
-                      'is_token: {}'.format( state['url'], state['mail'],
+                print('Configuring Zendesk with:\n'
+                      'url: {}\n'
+                      'mail: {}\n'
+                      'password: (hidden)\n'
+                      'is_token: {}\n'.format( state['url'], state['mail'],
                                              repr(state['is_token']) ))
             zd = Zendesk(state['url'],
                         zendesk_username = state['mail'],
@@ -518,7 +518,7 @@ def main(argv=None):
             entry_ids = [int(i) for i in state['entries'].split(',')]
             for entry_id in entry_ids:
                 if state['verbose']: 
-                    print('Obtaining entry {}'.format(forum_id))
+                    print('Obtaining entry {}'.format(entry_id))
                 entries.append(zd.show_entry(entry_id=entry_id))
         except ValueError:
             print('Error: Could not convert to integers: {}'.format(state['entries']))
