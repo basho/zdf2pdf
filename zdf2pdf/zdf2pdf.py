@@ -3,6 +3,8 @@ zdf2pdf: Create PDFs from Zendesk forums and entries
 """
 from __future__ import unicode_literals
 import os, shutil, re, textwrap
+import codecs
+import configparser
 try:
     import simplejson as json
 except:
@@ -36,7 +38,28 @@ def zdf2pdf(entries, opts):
     if not os.path.isdir(attach_dir):
         os.makedirs(attach_dir)
 
+    # Save the running configuration for rerunning
+    parser = configparser.SafeConfigParser()
+    config_opts = dict((k, v) for k, v in opts.iteritems() if (k != 'json_file'
+                      and k != 'categories' and k != 'forums' and k != 'topics'
+                      and k != 'run_section' and k != 'list_zdf' and k != 'work_dir'
+                      and k != 'delete' and k != 'url' and k != 'mail' and k != 'password'
+                      and k != 'is_token' and v != None
+                      ))
+    if config_opts.has_key('style_file'):
+        config_opts['style_file'] = os.path.basename(config_opts['style_file'])
+    if config_opts.has_key('output_file'):
+        config_opts['output_file'] = os.path.basename(config_opts['output_file'])
+    config_opts['json_file'] = 'entries.json'
+
+    parser.add_section('zdf2pdf')
+    for k, v in config_opts.iteritems():
+        parser.set('zdf2pdf', k, unicode(v))
+    with codecs.open(os.path.join(opts['work_dir'], 'zdf2pdf.cfg'), 'w', 'utf-8') as config_file:
+        parser.write(config_file)
+
     if opts['style_file']:
+        # Save the style file in the working directory
         shutil.copy(opts['style_file'], opts['work_dir'])
         data += """<link rel="stylesheet" type="text/css"
                    href="{}" />\n""".format(os.path.basename(opts['style_file']))
@@ -208,19 +231,18 @@ def strip_empty_tags(soup):
 def config_state(config_file, section, state):
     """
     Update a state (a dictionary) with options from a file parsed by
-    ConfigParser for a config [section]. May throw ConfigParser.NoSectionError.
+    configparser for a config [section]. May throw configparser.NoSectionError.
 
     Handles Boolean values specially by looking at the current state for
-    booleans and updating those values specially with ConfigParser.getboolean
+    booleans and updating those values specially with configparser.getboolean
     """
-    import ConfigParser
 
     # A list of program state items which are booleans.
     # Kept for convience as they are treated specially when parsing configs.
     state_bools = [k for k, v in state.iteritems() if isinstance(v, bool)]
 
     # read the config file
-    config = ConfigParser.SafeConfigParser()
+    config = configparser.SafeConfigParser()
     config.read(config_file)
 
     # look for the section, make it a dictionary
@@ -230,7 +252,7 @@ def config_state(config_file, section, state):
     for k in state_bools:
         try:
             config_dict[k] = config.getboolean(section, k)
-        except ConfigParser.NoOptionError:
+        except configparser.NoOptionError:
             # This config file did not contain this option. Skip it.
             pass
 
@@ -243,7 +265,6 @@ def config_state(config_file, section, state):
 
 def main(argv=None):
     import sys, tempfile, argparse
-    import ConfigParser
 
     # Log to stdout
     import logging
@@ -378,7 +399,7 @@ def main(argv=None):
         # Password is OK now, because we either have one from the config file or
         # it is still None.
         argp.set_defaults(**dict((k, v) for k, v in state.iteritems() if k != 'list_zdf'))
-    except ConfigParser.NoSectionError:
+    except configparser.NoSectionError:
         # -c CONFIG_FILE did not have a [zdf2pdf] section. Skip it.
         pass
 
@@ -396,7 +417,7 @@ def main(argv=None):
         if state['verbose']: print('Reading config file {}'.format(args.config_file))
         try:
             config_state(args.config_file, 'zdf2pdf', state)
-        except ConfigParser.NoSectionError:
+        except configparser.NoSectionError:
             # -c CONFIG_FILE did not have a [zdf2pdf] section. Skip it.
             pass
 
@@ -408,7 +429,7 @@ def main(argv=None):
             config_state(os.path.expanduser('~') + '/.zdf2pdf.cfg', args.run_section, state)
             section_found = True
             if state['verbose']: print('Found {} in ~/.zdf2pdf'.format(args.run_section))
-        except ConfigParser.NoSectionError:
+        except configparser.NoSectionError:
             # ~/.zdf2pdf.cfg did not have this section. Hope it's found later.
             pass
 
@@ -419,7 +440,7 @@ def main(argv=None):
                 config_state(args.config_file, args.run_section, state)
                 section_found = True
                 if state['verbose']: print('Found {} in {}'.format(args.run_section, args.config_file))
-            except ConfigParser.NoSectionError:
+            except configparser.NoSectionError:
                 # CONFIG_FILE did not have this section.
                 pass
 

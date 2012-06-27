@@ -26,5 +26,6 @@ setup(name="zdf2pdf",
         "httplib2",
         "simplejson",
         "zendesk",
+        "configparser",
       ]
 )
