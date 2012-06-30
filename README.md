@@ -88,7 +88,7 @@ to set their desired options such as `mail`, `url`, and `password` in their own
 such as `forums`, `entries`, `title`, etc. All options are valid in all config
 files and sections. An example of using two config files is given below.
 
-    ; ~/.zdf2pdf.cfg
+    # ~/.zdf2pdf.cfg
     [zdf2pdf]
     mail = you@example.com
     password = dneib393fwEF3ifbsEXAMPLEdhb93dw343
@@ -100,13 +100,14 @@ files and sections. An example of using two config files is given below.
   
 
 
-    ; Example complete config file. This is a comment.
+    # Example config file with all options. This is a comment.
     [tps_report]
-    version = 1.1.2 ; not actually a config option. used for interpolation below
-    ;verbose = 1
-    ;json_file = %(work_dir)s/entries.json
+    # version is not actually a config option. used for interpolation below
+    version = 1.1.2
+    # verbose = 1
+    # json_file = entries.json
     forums = 30617246, 10887508, 23728902
-    ;entries = 30162764, 20878085, 32279820
+    # topics = 30162764, 20878085, 32279820
     style_file = mystyle.css
     output_file = tps_report-%(version)s.pdf
     title = TPS REPORT %(version)s
@@ -119,13 +120,16 @@ files and sections. An example of using two config files is given below.
     toc_class = tableOfContents
     pre_width = 80
     strip_empty = 1
-    ;header = <div id="header">Some header HTML</div>
+    # header = <div id="header">Some header HTML</div>
     footer = <div id="footer">
       <pdf:pagenumber/>
       </div>
       <pdf:nexttemplate name="regular"/>
+    # category_sections = 0
+    forum_sections = 1
+    # topics_heading = 'Section heading above 30162764, 20878085, and 32279820'
     work_dir = my_tps_reports
-    ;delete
+    # delete = 1
     url = https://example.zendesk.com
     mail = pgibbons@example.com
     password = dneib393fwEF3ifbsEXAMPLEdhb93dw343

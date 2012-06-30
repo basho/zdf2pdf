@@ -5,10 +5,39 @@ from __future__ import unicode_literals
 import os, shutil, re, textwrap
 import codecs
 import configparser
-try:
-    import simplejson as json
-except:
-    import json
+import simplejson as json
+
+def process_entries(entries, entry_ids=[], body='', toc=''):
+    for entry in entries:
+        # Keep a list of entry IDs that are included in this doc so relative
+        # links can be fixed.
+        entry_ids.append(entry['id'])
+
+        if entry.has_key('section'):
+            print entry['section']
+            # This is a section containing sub-entries
+            body += '<a name="{}"></a><h1>{}</h1>\n'.format(entry['id'], entry['section'])
+            body += entry['body'] + '\n'
+            
+            # Put the section in the table of contents, starting a new list
+            toc += '<li><a href="#{}">{}</a></li>\n'.format(entry['id'], entry['section'])
+            toc += '<ol>\n'
+
+            entry_ids, body, toc = process_entries(entry['topics'], entry_ids, body, toc)
+
+            toc += '<li><a href="#{}">{}</a></li>\n'.format(entry['id'], entry['section'])
+            toc += '</ol>\n'
+        else:
+            #print entry['title']
+            # This is an entry
+            # Get the body of the entry
+            body += '<a name="{}"></a><h1>{}</h1>\n'.format(entry['id'], entry['title'])
+            body += entry['body'] + '\n'
+
+            # Put the entry in the table of contents
+            toc += '<li><a href="#{}">{}</a></li>\n'.format(entry['id'], entry['title'])
+
+    return (entry_ids, body, toc)
 
 def zdf2pdf(entries, opts):
     from bs4 import BeautifulSoup
@@ -96,35 +125,19 @@ def zdf2pdf(entries, opts):
 
         data += '</div>\n'
 
+    # Go through the JSON and build a toc and body to add to the html data
+    entry_ids, body, toc = process_entries(entries)
+
+    # Put all of the body after the table of contents
     if opts['toc']:
         if opts['toc_class']:
             toc_class = ' class="{}"'.format(opts['toc_class'])
         else:
             toc_class = ''
-
         data += '<div{}>\n<h2>{}</h2>\n<ol>\n'.format(toc_class, opts['toc_title'])
-
-    entry_body = ''
-    entry_ids = []
-    for entry in entries:
-        # Keep a list of entry IDs that are included in this doc so relative
-        # links can be fixed.
-        entry_ids.append(entry['id'])
-
-        # Build the table of contents
-        if opts['toc']:
-            data += '<li><a href="#{}">{}</a></li>\n'.format(entry['id'], entry['title'])
-        
-        # Get the body of the entry
-        entry_body += '<a name="{}"></a><h1>{}</h1>\n'.format(entry['id'], entry['title'])
-        #entry_body += '<a name="' + entry['id'] + '<h1>' + entry['title'] + '</h1>\n'
-        entry_body += entry['body'] + '\n'
-
-    if opts['toc']:
+        data += toc
         data += '</ol>\n</div>\n'
-
-    # Put all of the body after the table of contents
-    data += entry_body
+    data += body
 
     # Change to working directory to begin file output
     os.chdir(opts['work_dir'])
@@ -309,6 +322,9 @@ def main(argv=None):
         'strip_empty': False,
         'header': None,
         'footer': None,
+        'category_sections': False,
+        'forum_sections': False,
+        'topics_heading': None,
         'work_dir': tempfile.gettempdir(),
         'delete': False,
         'url': None,
@@ -369,6 +385,15 @@ def main(argv=None):
         help='HTML header to add to the PDF (see docs)')
     argp.add_argument('--footer', action=UnicodeStore, dest='footer',
         help='HTML footer to add to the PDF (see docs)')
+    argp.add_argument('--category-sections', action='store_true',
+        dest='category_sections',
+        help='Make categories sections (default: false)')
+    argp.add_argument('--forum-sections', action='store_true',
+        dest='category_sections',
+        help='Make categories sections (default: false)')
+    argp.add_argument('--topics-heading', action=UnicodeStore,
+        dest='topics_heading',
+        help='Heading to put at start of topics retrieved individually')
 
     argp.add_argument('-w', action=UnicodeStore, dest='work_dir',
         help="""Working directory in which to store JSON output and images
@@ -534,19 +559,100 @@ def main(argv=None):
 
     # Get the entries from one or more zendesk categories
     if state['categories']:
+
         try:
             cat_ids = [int(i) for i in state['categories'].split(',')]
-            for cat_id in cat_ids:
-                if state['verbose']: 
-                    print('Obtaining entries from category {}'.format(cat_id))
-                forums = zd.list_category_forums(category_id=cat_id)['forums']
-                for forum in forums:
-                    if state['verbose']: 
-                        print('Obtaining entries from forum {}'.format(forum_id))
-                    entries += zd.list_topics(forum_id=forum['id'])['topics']
         except ValueError:
             print('Error: Could not convert to integers: {}'.format(state['forums']))
             return 1
+
+        for cat_id in cat_ids:
+            if state['verbose']: 
+                print('Obtaining entries from category {}'.format(cat_id))
+
+            cat_entries = []
+            forums = zd.list_category_forums(category_id=cat_id)['forums']
+            for forum in forums:
+                if state['verbose']: 
+                    print('Obtaining entries from forum {}'.format(forum_id))
+
+                # topics = [{entry}, {entry}, ..., {entry}]
+                topics = zd.list_topics(forum_id=forum['id'])['topics']
+
+                if state['forum_sections']:
+                    cat_entries.append({'section': forum['name'],
+                                        'id': forum['id'],
+                                        'body': forum['description'],
+                                        'topics': topics})
+                    # result:
+                    # cat_entries = [
+                    #                 <previous forums,>
+                    #                 {
+                    #                   'section':'FORUM TITLE',
+                    #                   'topics':
+                    #                     [
+                    #                       {entry},
+                    #                       ...
+                    #                       {entry}
+                    #                     ]
+                    #                 }
+                    #               ]
+                else:
+                    cat_entries += topics
+                    # result:
+                    # cat_entries = [ 
+                    #                 {entry},
+                    #                 ...
+                    #                 {entry}
+                    #               ]
+
+            if state['category_sections']:
+                cat = zd.show_category(category_id=cat_id)
+                entries.append({'section': cat['name'],
+                                'id': cat_id,
+                                'body': cat['description'],
+                                'topics': cat_entries})
+                #od[zd.show_category(category_id=cat_id)['name']] = 
+                #entries.append([zd.show_category(category_id=cat_id)['name']] = 
+                # result if forum sections:
+                # entries = [
+                #             <previous categories,>
+                #             {
+                #               'section': 'CATEGORY TITLE',
+                #               'id': 'CATEGORY ID',
+                #               'body': 'CATEGORY DESCRIPTION',
+                #               'topics':
+                #                 [
+                #                   {
+                #                     'section':'FORUM TITLE',
+                #                     'topics':
+                #                       [
+                #                         {entry},
+                #                         ...
+                #                         {entry}
+                #                       ]
+                #                   }
+                #                 ]
+                #             }
+                #           ]
+                #
+                # result if not forum sections:
+                # entries = [
+                #             <previous categories,>
+                #             {
+                #               'section':'CATEGORY TITLE',
+                #               'topics':
+                #                 [
+                #                   {entry},
+                #                   ...
+                #                   {entry}
+                #                 ]
+                #             }
+                #           ]
+            else:
+                entries += cat_entries
+                # result: whatever cat_entries was (forums as sections or not)
+                #         is concatenated onto the end of entries
 
     # Get the entries from one or more zendesk forums
     if state['forums']:
@@ -555,22 +661,29 @@ def main(argv=None):
             for forum_id in forum_ids:
                 if state['verbose']: 
                     print('Obtaining entries from forum {}'.format(forum_id))
-                entries += zd.list_topics(forum_id=forum_id)['topics']
+                topics = zd.list_topics(forum_id=forum_id)['topics']
+                # see above for description of what entries looks like
+                if state['forum_sections']:
+                    forum = zd.show_forum(forum_id=forum_id)['forum']
+                    entries.append({'section': forum['name'],
+                                    'id': forum['id'],
+                                    'body': forum['description'],
+                                    'topics':topics})
+                else:
+                    entries += topics
+
         except ValueError:
             print('Error: Could not convert to integers: {}'.format(state['forums']))
             return 1
 
     # Get individual entries from zendesk
     if state['topics']:
-        try:
-            topic_ids = [int(i) for i in state['topics'].split(',')]
-            for topic_id in topic_ids:
-                if state['verbose']: 
-                    print('Obtaining topic {}'.format(topic_id))
-                entries.append(zd.show_topic(topic_id=topic_id)['topic'])
-        except ValueError:
-            print('Error: Could not convert to integers: {}'.format(state['topics']))
-            return 1
+        topic_ids = state['topics'].replace(' ', '')
+        topics = zd.show_multiple_topics(topic_ids)['topics']
+        if state['entries_heading']:
+            entries.append({'section':state['entries_heading'], 'topics':topics})
+        else:
+            entries += topics
 
     if len(entries) == 0:
         # Didn't get entries from any inputs.
