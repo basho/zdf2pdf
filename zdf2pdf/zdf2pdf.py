@@ -14,7 +14,6 @@ def process_entries(entries, entry_ids=[], body='', toc=''):
         entry_ids.append(entry['id'])
 
         if entry.has_key('section'):
-            print entry['section']
             # This is a section containing sub-entries
             body += '<a name="{}"></a><h1>{}</h1>\n'.format(entry['id'], entry['section'])
             body += entry['body'] + '\n'
@@ -28,7 +27,6 @@ def process_entries(entries, entry_ids=[], body='', toc=''):
             toc += '<li><a href="#{}">{}</a></li>\n'.format(entry['id'], entry['section'])
             toc += '</ol>\n'
         else:
-            #print entry['title']
             # This is an entry
             # Get the body of the entry
             body += '<a name="{}"></a><h1>{}</h1>\n'.format(entry['id'], entry['title'])
