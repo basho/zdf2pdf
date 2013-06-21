@@ -273,6 +273,13 @@ file `style.css` located in the present working directory.
  * xhtml2pdf
  * zendesk (patched for forum support)
 
+### TODO
+
+I would like to pull in a templating utility and do away with all of the
+command line options that provide structure and content. Additionally, I would
+like for zdf2pdf and zdgrab to use the same configuration file and similar
+options.
+
 ### Headers and Footers
 
 The header and footer options are provided for the purpose of doing things like
