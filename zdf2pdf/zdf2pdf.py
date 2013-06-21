@@ -572,7 +572,7 @@ def main(argv=None):
             forums = zd.list_category_forums(category_id=cat_id)['forums']
             for forum in forums:
                 if state['verbose']: 
-                    print('Obtaining entries from forum {}'.format(forum_id))
+                    print('Obtaining entries from forum {}'.format(forum['id']))
 
                 # topics = [{entry}, {entry}, ..., {entry}]
                 topics = zd.list_topics(forum_id=forum['id'])['topics']
