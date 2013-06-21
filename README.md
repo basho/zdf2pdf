@@ -8,13 +8,13 @@ Zdf2pdf is a utility for downloading entries or entire forums from
 Tested with Python 2.7. Simplejson, httplib2, and beautifulsoup4 are required.
 Zdf2pdf requires xhtml2pdf for the generation of PDF files. Also, to
 communicate with Zendesk forums, the [patched
-zendesk](http://github.com/basho/zendesk) Python module is required. Therefore,
+zendesk](http://github.com/eventbrite/zendesk) Python module is required. Therefore,
 the installation process is usually something like:
 
 1. Install Freetype if not installed. (libfreetype.a needed for reportlab build)
 2. Install prereqs using `pip install simplejson beautifulsoup4 httplib2 xhtml2pdf`
-4. Install zendesk using `pip install git+git://github.com/basho/zendesk.git`
-5. Install zdf2pdf using `pip install git+git://github.com/basho/zdf2pdf.git`
+4. Install zendesk using `pip install https://github.com/eventbrite/zendesk/archive/master.zip`
+5. Install zdf2pdf using `pip install https://github.com/basho/zdf2pdf/archive/master.zip`
 
 Alternatively, instead of using pip to directly install from the public git
 repos, one can clone them locally and run `python setup.py install`.
@@ -313,5 +313,5 @@ number.
 ### Resources
 
 * zdf2pdf: https://github.com/basho/zdf2pdf
-* Python Zendesk module: https://github.com/basho/zendesk
+* Python Zendesk module: https://github.com/eventbrite/zendesk
 * Zendesk Developer Site (For API information): http://developer.zendesk.com
